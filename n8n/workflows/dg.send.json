@@ -1,0 +1,324 @@
+{
+  "id": "acfDigestSend001",
+  "name": "DG · Send",
+  "nodes": [
+    {
+      "id": "169d74d4-2c16-55eb-95cd-a5d9956bfe9a",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## DG · Send\n**Purpose**: send the issue to confirmed subscribers in chunks of 100 through the Resend batch API (DG-4). Chunks are assigned once, each chunk has its own Idempotency-Key, so a retry after a crash continues without duplicates. Test send (digest.test) goes to one address.\n**Input**: job {payload.issue_id, payload.email (test)}.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "9c53c6bd-4b4b-5dad-b3cb-577bea4a5aeb",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "c73771c7-c51d-59f9-9259-ca880b770d7b",
+      "name": "Next chunk",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select digest_next_chunk($1, $2) as ch",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.payload.issue_id, $json.payload.email ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "29df6612-7a5f-5a82-a7db-3b0badda38a2",
+      "name": "More?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3559be5c-e4b3-5ade-9ca4-b78d7889b304",
+              "leftValue": "={{ !!(!$json.ch.done) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "0d445766-8dc6-5ae1-be18-17f15c5d401b",
+      "name": "Test?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4d9aac55-728c-58c6-afbb-63409b4c1bfd",
+              "leftValue": "={{ !!($json.ch.test) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "644ac866-0681-54ff-8962-fc1e15452624",
+      "name": "Send test",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.ch.resend_base }}/emails",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.ch.idempotency_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ch.emails[0]) }}"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "acfCredResend001",
+          "name": "Resend API (Authorization: Bearer re_...)"
+        }
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "25a92da4-4482-5bd7-bdbd-1e9bbdc7e7e1",
+      "name": "Send chunk",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.ch.resend_base }}/emails/batch",
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.ch.idempotency_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.ch.emails) }}"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "acfCredResend001",
+          "name": "Resend API (Authorization: Bearer re_...)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "4688c804-3741-509e-bfb6-57a1e4502472",
+      "name": "Chunk result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select digest_chunk_result($1, $2, $3::jsonb, $4) as ch",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [2].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.payload.issue_id, $('More?').item.json.ch.chunk, (typeof $json.body === 'object' && $json.body) ? $json.body : {}, ($json.error || !$json.statusCode || $json.statusCode >= 300) ? String($json.error?.message ?? $json.error ?? ('HTTP ' + $json.statusCode + ' ' + JSON.stringify($json.body ?? ''))).slice(0, 500) : null ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Next chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next chunk": {
+      "main": [
+        [
+          {
+            "node": "More?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More?": {
+      "main": [
+        [
+          {
+            "node": "Test?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test?": {
+      "main": [
+        [
+          {
+            "node": "Send test",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send chunk": {
+      "main": [
+        [
+          {
+            "node": "Chunk result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk result": {
+      "main": [
+        [
+          {
+            "node": "More?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

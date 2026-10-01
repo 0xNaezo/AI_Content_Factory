@@ -1,0 +1,72 @@
+[
+  {
+    "id": "mf-gen-01",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "¡Nueva clase! Desde el lunes tenemos Remo + Core los lunes y miércoles a las 07:15. Dura 45 minutos y el máximo es de 8 personas, porque tenemos 8 remos. La da Lucía. Apta para todos los niveles. Reservas en la app."},
+    "expected": {"facts": ["07:15", "Lucía", "45"], "forbidden_claims": ["calorías", "calories", "gratis"]}
+  },
+  {
+    "id": "mf-gen-02",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Beach Session this Saturday at 09:30 on Malvarrosa beach, meet at lifeguard tower 3. Bodyweight circuit and a swim if you're brave. Free for members, €10 for non-members. Bring water and a towel. If it rains, we train in the studio at the same time."},
+    "expected": {"facts": ["09:30", "€10", "Malvarrosa"], "forbidden_claims": ["breakfast", "desayuno", "yoga"]}
+  },
+  {
+    "id": "mf-gen-03",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Historia de socia (con su permiso): Carmen, 58 años, empezó con nosotros hace un año sin haber levantado nunca una pesa. Esta semana ha hecho su primer peso muerto con 60 kg. Dice que lo mejor no es el número, sino que ahora sube la compra a un cuarto piso sin parar. ¡Enhorabuena, Carmen!"},
+    "expected": {"facts": ["Carmen", "60", "58"], "forbidden_claims": ["weight loss", "lost weight", "adelgaz"]}
+  },
+  {
+    "id": "mf-gen-04",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Newcomer offer this month: your first month of unlimited classes for €59 instead of €79 if you sign up by Sunday. It includes a one-to-one intro session with a coach. Only for people who have never been members."},
+    "expected": {"facts": ["€59", "€79"], "forbidden_claims": ["25%", "€20", "€49"]}
+  },
+  {
+    "id": "mf-gen-05",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Cambios de horario desde la semana que viene: la clase de HIIT de las 19:00 pasa a las 19:30, y los sábados añadimos Movilidad a las 12:00. El resto del horario no cambia."},
+    "expected": {"facts": ["19:30", "12:00", "HIIT"], "forbidden_claims": ["20:00", "Pilates", "yoga"]}
+  },
+  {
+    "id": "mf-gen-06",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Tip from Tomás for the blog: how to start strength training if you've never done it. His points: learn five basic movement patterns first (squat, hinge, push, pull, carry); start lighter than you think you need; two or three sessions a week is plenty at the beginning; write down what you lifted so you can see progress; and sleep matters more than any supplement. Our Fuerza/Strength class on Mondays and Wednesdays at 18:00 covers all five patterns, and the coach adjusts the weights for beginners."},
+    "expected": {"facts": ["Tomás", "18:00"], "forbidden_claims": ["protein", "proteína", "creatine"]}
+  },
+  {
+    "id": "mf-gen-07",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "vale, rápido, eh, el viernes hacemos la noche de foam roller, a las 20:00, una hora, la da Hannah en inglés y Tomás va traduciendo, es para todos los socios y no cuesta nada, y... bueno, que traigan esterilla si tienen, y ya está"},
+    "expected": {"facts": ["20:00", "Hannah", "Tomás"], "forbidden_claims": ["physio", "fisio", "non-members"]}
+  },
+  {
+    "id": "mf-gen-08",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Mostly for LinkedIn: we now offer team plans for companies in Valencia. Minimum 5 people, 10% off the unlimited monthly membership, one invoice for the company, and every employee books their own classes in the app. Two coworking spaces in the Cabanyal have already signed up (we can't name them yet)."},
+    "expected": {"facts": ["10%", "Cabanyal"], "forbidden_claims": ["deductible", "deducible", "20%"]}
+  },
+  {
+    "id": "mf-gen-09",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Aviso: mañana se cancela la clase de Fuerza de las 07:00 (Lucía está en una formación). La de las 09:00 se mantiene."},
+    "expected": {"facts": ["07:00", "09:00", "Lucía"], "forbidden_claims": ["reembolso", "refund", "sustitu"]}
+  },
+  {
+    "id": "mf-gen-10",
+    "brand": "marea-fitness",
+    "kind": "generation",
+    "material": {"text": "Why we cap classes at 12. Lucía wrote this for the blog: when she coached in big gyms, classes of 30 or more meant nobody checked anyone's technique. At Marea every class has a maximum of 12 people, so the coach can correct each person several times per session. Newcomers get a 'first class' wristband so coaches know to explain a bit more. We'd rather run more classes than bigger ones: we now run 38 classes a week."},
+    "expected": {"facts": ["12", "38", "Lucía"], "forbidden_claims": ["injury-free", "sin lesiones", "personal training"]}
+  }
+]

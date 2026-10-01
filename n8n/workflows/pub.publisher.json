@@ -1,0 +1,582 @@
+{
+  "id": "acfPublisher0001",
+  "name": "PUB · Publisher",
+  "nodes": [
+    {
+      "id": "c07bd67c-d4e1-5f9e-b3d3-3f79bdbd4f06",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## PUB · Publisher\n**Purpose**: publish due posts exactly once (PB-3…PB-6): an attempt row with an idempotency key is written before the call; ok -> published + notices; failed -> retries with backoff for 30 min, then failed + buttons; no answer -> unknown, the editor decides. The stop switch is checked in the same query (PB-9). Adapters: Telegram channel (photo + caption or text), blog and preview (local).\n**Trigger**: every 30 s + fast path (publish now).\n**Invariant 9**: guests, eval and preview platforms resolve to the preview adapter in SQL.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "caa8d264-e305-5903-9165-8fc46225fad3",
+      "name": "Every 30 s",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "dfe2edc7-36d2-5f42-b999-871d98d2256d",
+      "name": "Fast path",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        170
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "0d06293f-3015-5155-bcf8-080a6b48c8bf",
+      "name": "Claim",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from claim_publications(10)",
+        "options": {
+          "largeNumbersOutput": "numbers"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "fab98d6a-d39d-5a0f-b832-18b8c671b654",
+      "name": "Adapter",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 4,
+        "output": "={{ $json.adapter !== 'telegram' ? 3 : $json.request.photo_file_id ? 0 : $json.request.photo_s3_key ? 1 : 2 }}"
+      }
+    },
+    {
+      "id": "468fc170-3d4a-5397-8e70-88c0f23ddb3a",
+      "name": "Send photo by id",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.request.api_base }}/sendPhoto",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.request.chat_id, photo: $json.request.photo_file_id, caption: $json.request.text, parse_mode: 'HTML' }) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "fbea03ff-2b71-58d7-a143-906c6cec6f38",
+      "name": "Get photo",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "bucketName": "={{ $json.request.bucket }}",
+        "fileKey": "={{ $json.request.photo_s3_key }}",
+        "binaryPropertyName": "data"
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "717a0ada-6732-5b25-b997-98cc969b8432",
+      "name": "Photo request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const q = $json.request; return { json: { api: q.api_base, request: { body: { chat_id: q.chat_id, caption: q.text, parse_mode: 'HTML' }, upload: { field: 'photo', filename: 'image.jpg', mime: q.photo_mime || 'image/jpeg' } } }, binary: $input.item.binary };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "7ff2e478-f2e8-59d1-8813-8c535e8b3ad0",
+      "name": "Multipart",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const { body: fields, upload: file } = items[i].json.request;\n  const form = Object.entries(fields)\n    .filter(([, v]) => v !== null && v !== undefined && v !== '')\n    .map(([name, v]) => ({ name, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }));\n  if (form.length > 6) throw new Error('too many form fields for the upload node: ' + form.length);\n  while (form.length < 6) form.push({ name: '_pad' + form.length, value: '' });\n  const content = file.text != null ? Buffer.from(file.text, 'utf8') : await this.helpers.getBinaryDataBuffer(i, 'data');\n  out.push({ json: { ...items[i].json, form, form_file: file.field },\n             binary: { file: await this.helpers.prepareBinaryData(content, file.filename, file.mime) }, pairedItem: i });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "6ded2b22-3102-55f5-a7b0-0b808df34b73",
+      "name": "Send photo file",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.api }}/sendPhoto",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "={{ $json.form_file }}",
+              "inputDataFieldName": "file"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[0].name }}",
+              "value": "={{ $json.form[0].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[1].name }}",
+              "value": "={{ $json.form[1].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[2].name }}",
+              "value": "={{ $json.form[2].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[3].name }}",
+              "value": "={{ $json.form[3].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[4].name }}",
+              "value": "={{ $json.form[4].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[5].name }}",
+              "value": "={{ $json.form[5].value }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "df4de7e8-4f7b-5dc2-8323-c1798869b09e",
+      "name": "Send text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.request.api_base }}/sendMessage",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.request.chat_id, text: $json.request.text, parse_mode: 'HTML' }) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "74aec2a5-87e6-50bd-a187-951c18438a38",
+      "name": "Outcome",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Telegram answer -> publish outcome (PB-4..PB-6). No answer after sending = unknown: never retried automatically.\nconst claim = $('Claim').item.json;\nconst r = $json;\nconst b = r.body;\nlet outcome, error = null, ext = null, url = null, fileId = null;\nif (r.error || !r.statusCode) {\n  const m = String(r.error?.message || r.error || 'no response');\n  outcome = /ECONNREFUSED|ENOTFOUND|EAI_AGAIN/i.test(m) ? 'failed' : 'unknown';\n  error = m.slice(0, 500);\n} else if (r.statusCode === 200 && b && b.ok) {\n  const msg = b.result;\n  outcome = 'ok';\n  ext = msg.chat.id + ':' + msg.message_id;\n  url = msg.chat.username ? `https://t.me/${msg.chat.username}/${msg.message_id}` : `https://t.me/c/${String(msg.chat.id).replace(/^-100/, '')}/${msg.message_id}`;\n  if (Array.isArray(msg.photo) && msg.photo.length) fileId = msg.photo[msg.photo.length - 1].file_id;\n} else {\n  outcome = 'failed';\n  error = `HTTP ${r.statusCode}: ${b?.description || JSON.stringify(b ?? '').slice(0, 300)}`;\n}\nreturn { json: { attempt_id: claim.attempt_id, outcome, http: r.statusCode || null, ext, url, error, fileId } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "30d61035-822d-518d-ab22-59d795757d39",
+      "name": "Record",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select publish_result($1, $2, $3, $4, $5, $6, $7) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.attempt_id, $json.outcome, $json.http, $json.ext, $json.url, $json.error, $json.fileId ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "b46fa481-8d78-5dde-b3b3-41fdf8fb8e3b",
+      "name": "Publish locally",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select publish_local($1) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.attempt_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "563c8e81-14ed-5175-b9f9-fa20f25f003a",
+      "name": "Notices?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bec463a1-5e91-556d-8d06-b00847072c69",
+              "leftValue": "={{ !!($json.flags && $json.flags.outbox) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "01c5ab8a-52ef-5b3a-9a33-6b54734afc75",
+      "name": "Notify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2400,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfOutbox0000001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 30 s": {
+      "main": [
+        [
+          {
+            "node": "Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fast path": {
+      "main": [
+        [
+          {
+            "node": "Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim": {
+      "main": [
+        [
+          {
+            "node": "Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adapter": {
+      "main": [
+        [
+          {
+            "node": "Send photo by id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Publish locally",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get photo": {
+      "main": [
+        [
+          {
+            "node": "Photo request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Photo request": {
+      "main": [
+        [
+          {
+            "node": "Multipart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Multipart": {
+      "main": [
+        [
+          {
+            "node": "Send photo file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send photo file": {
+      "main": [
+        [
+          {
+            "node": "Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send photo by id": {
+      "main": [
+        [
+          {
+            "node": "Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send text": {
+      "main": [
+        [
+          {
+            "node": "Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outcome": {
+      "main": [
+        [
+          {
+            "node": "Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record": {
+      "main": [
+        [
+          {
+            "node": "Notices?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish locally": {
+      "main": [
+        [
+          {
+            "node": "Notices?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notices?": {
+      "main": [
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": true,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

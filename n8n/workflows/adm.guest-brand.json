@@ -1,0 +1,149 @@
+{
+  "id": "acfGuestBrand001",
+  "name": "ADM · Guest brand",
+  "nodes": [
+    {
+      "id": "9e307aff-8b65-5585-96f6-bf7750a460b3",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## ADM · Guest brand\n**Purpose**: temporary guest brand from a one-sentence business description (tz section 10): quick schema-constrained profile, preview-only platforms, deleted after the TTL.\n**Input**: job {payload.user_id, payload.description}.\n**AI**: onboarding.quick (guest budget).",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "6f15d9bf-906c-5c6b-b409-f45368aa18a9",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "20f0fcfa-ad0c-5273-a1b9-1a30fe0a1e40",
+      "name": "AI input: quick profile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return { json: { route: 'onboarding.quick', account_type: 'guest', job_id: $json.id,\n  vars: { description: $json.payload.description } } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "ebdf36dc-26c0-5bc2-91bf-2be5916d6341",
+      "name": "AI: quick profile",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "6f9a8356-4eeb-51dc-9e49-a93d017ee07a",
+      "name": "Create",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select guest_brand_create($1, $2::jsonb) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.payload.user_id, $json.result ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI input: quick profile": {
+      "main": [
+        [
+          {
+            "node": "AI: quick profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "AI input: quick profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: quick profile": {
+      "main": [
+        [
+          {
+            "node": "Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

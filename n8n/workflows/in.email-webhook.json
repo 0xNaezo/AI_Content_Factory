@@ -1,0 +1,202 @@
+{
+  "id": "acfEmailHook0001",
+  "name": "IN · Email webhook",
+  "nodes": [
+    {
+      "id": "54694485-ba88-5281-9672-0f0ba6400e43",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## IN · Email webhook (Resend)\n**Purpose**: inbound emails and delivery events. Webhooks are only notifications: the email and statuses are re-fetched from the Resend API with our key (no signing secret needed; a forged webhook injects nothing).\n**Side effects**: inbound_events + email.fetch / esp.event jobs.\n**TZ**: IN-1, DG-6.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "837b0b78-0e50-5fad-b829-779265e64057",
+      "name": "Resend",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resend",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "a86adae5-8662-59f3-8b80-8b705a3ed323"
+    },
+    {
+      "id": "289ca519-f23d-5a40-a8ac-3a3d2bcebb5e",
+      "name": "Record",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select resend_ingest($1::jsonb, $2) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [0].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $json.body, $json.headers['svix-id'] ?? null ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "cb9a4749-b816-5956-b804-9fe2057885f4",
+      "name": "OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "respondWith": "noData",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "d60ee175-c641-5728-9c14-d9a3e49fd070",
+      "name": "New?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b793b5e7-9701-5f50-b625-2a397c40880c",
+              "leftValue": "={{ !!($('Record').first().json.r.new) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "c445f3b5-bad8-5e0c-b5f0-5fbca2e669db",
+      "name": "Dispatcher",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfDispatcher001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Resend": {
+      "main": [
+        [
+          {
+            "node": "Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record": {
+      "main": [
+        [
+          {
+            "node": "OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OK": {
+      "main": [
+        [
+          {
+            "node": "New?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New?": {
+      "main": [
+        [
+          {
+            "node": "Dispatcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": true,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

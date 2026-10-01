@@ -1,0 +1,262 @@
+{
+  "id": "acfPostOps000001",
+  "name": "PUB · Post ops",
+  "nodes": [
+    {
+      "id": "37b23d08-c54b-5d6e-b32e-3568df816af8",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## PUB · Post ops\n**Purpose**: edit or delete an already published post from the card (PB-7). Telegram: editMessageText / editMessageCaption / deleteMessage; blog: the site shows the current version, delete hides the post. Every call is recorded; failures are told to editors.\n**Input**: job {variant_id, payload.op: edit|delete, payload.user_id}.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "9755312d-b611-5e9a-9f41-ee94c8f0f376",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "7ad27d26-d706-5d08-81bf-5f75d752c7ce",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select post_op_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "298ae7a7-5b5d-560a-b8b0-8e0620d02e5d",
+      "name": "Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d7699c91-841f-56c8-8f38-f6e84e8d58d5",
+              "leftValue": "={{ !!($json.c.skip) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "fe777a1a-f7b5-5de6-a5b0-02c9c68c8c5f",
+      "name": "Adapter",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $json.c.adapter === 'telegram' ? 0 : 1 }}"
+      }
+    },
+    {
+      "id": "c0ffff9b-6304-5d74-9861-3f4dbae3b5c9",
+      "name": "Call Telegram",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.c.api_base }}/{{ $json.c.method }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.c.body) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "e8b71d85-803c-5ea7-af06-ea56f9c243a7",
+      "name": "Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select post_op_result($1, $2, $3, $4) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.id, ($json.statusCode === 200 && !!$json.body?.ok) || String($json.body?.description || '').toLowerCase().includes('not modified'), $json.statusCode || 0, String($json.body?.description || $json.error?.message || $json.error || '') || null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "a8cc7a2c-edbc-5f4d-8d32-1ccf07072307",
+      "name": "Blog done",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select post_op_result($1, true) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Skip?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adapter": {
+      "main": [
+        [
+          {
+            "node": "Call Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Blog done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Telegram": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

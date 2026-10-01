@@ -1,0 +1,233 @@
+{
+  "id": "acfEspEvents0001",
+  "name": "DG · ESP events",
+  "nodes": [
+    {
+      "id": "7bab966e-4826-5de1-b61d-7dbc041b77ff",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## DG · ESP events\n**Purpose**: delivery / open / click / bounce / complaint for our digest emails (DG-6). The status is fetched from Resend by email id (verified), bounces and complaints disable the subscriber.\n**Input**: job {payload.event_id}.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "61a7114c-1b23-552e-9f8e-3a526dc7d30c",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "9a3c20e7-7b05-5c50-896f-950e7927cbdb",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select esp_event_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.payload.event_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "dc6ca0de-ad43-5f38-bfdf-72973d4924b7",
+      "name": "Ours?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9ac1dd68-7ba5-5643-a92c-ab65c3516bb7",
+              "leftValue": "={{ !!($json.c.tracked) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "852eeb65-aa9b-5f35-a70e-00f3053a0af0",
+      "name": "Get status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.c.resend_base }}/emails/{{ $json.c.email_id }}",
+        "options": {
+          "timeout": 20000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "acfCredResend001",
+          "name": "Resend API (Authorization: Bearer re_...)"
+        }
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "96f98907-c9c9-5930-b3b2-6f78c9d3aed5",
+      "name": "Apply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select esp_event_done($1, $2, $3) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.payload.event_id, $('Context').first().json.c.email_id, $json.last_event ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "1012415d-87fe-51d8-a1b1-b0c06793eb0a",
+      "name": "Ignore",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select esp_event_done($1, $2, null) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.payload.event_id, $json.c.email_id ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Ours?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ours?": {
+      "main": [
+        [
+          {
+            "node": "Get status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get status": {
+      "main": [
+        [
+          {
+            "node": "Apply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

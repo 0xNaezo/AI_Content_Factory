@@ -1,0 +1,114 @@
+[
+  {
+    "id": "route-01",
+    "brand": "kettle-crumb",
+    "kind": "routing",
+    "material": {"text": "Can we post about the new batch of cinnamon swirls? They come out of the oven around 8. And tell people the flat white price isn't changing even though milk got more expensive."},
+    "expected": {"brand": "kettle-crumb"}
+  },
+  {
+    "id": "route-02",
+    "brand": "kettle-crumb",
+    "kind": "routing",
+    "material": {"text": "Saturday morning we're running a home-brewing class: French press and pour-over basics, one hour, £15 including a bag of beans to take home."},
+    "expected": {"brand": "kettle-crumb"}
+  },
+  {
+    "id": "route-03",
+    "brand": "kettle-crumb",
+    "kind": "routing",
+    "material": {"text": "the new espresso machine arrived, three groups, so the morning queue should be way shorter, and we're trialling a honey lavender latte this week"},
+    "expected": {"brand": "kettle-crumb"}
+  },
+  {
+    "id": "route-04",
+    "brand": "kettle-crumb",
+    "kind": "routing",
+    "material": {"text": "For Kettle & Crumb: dog of the week post. Biscuit the spaniel came in again and charmed everyone at the counter."},
+    "expected": {"brand": "kettle-crumb"}
+  },
+  {
+    "id": "route-05",
+    "brand": "kettle-crumb",
+    "kind": "routing",
+    "material": {"text": "Toasties are now served until 15:00 on weekdays instead of 12:00. Cheese and pickle, ham and mustard, and a vegan one with roasted veg."},
+    "expected": {"brand": "kettle-crumb"}
+  },
+  {
+    "id": "route-06",
+    "brand": "kettle-crumb",
+    "kind": "routing",
+    "material": {"text": "The gym next door asked if we could do a post-workout smoothie, so from Monday there's a banana, oat and peanut butter smoothie at the counter, £4.50."},
+    "expected": {"brand": "kettle-crumb"}
+  },
+  {
+    "id": "route-07",
+    "brand": "tallybridge",
+    "kind": "routing",
+    "material": {"text": "New integration shipped: bank feeds from three more Dutch banks now sync every hour, so payment matching picks up incoming transfers faster."},
+    "expected": {"brand": "tallybridge"}
+  },
+  {
+    "id": "route-08",
+    "brand": "tallybridge",
+    "kind": "routing",
+    "material": {"text": "Post idea for finance leaders: what to do when a key customer pays 60 days late every quarter. Escalation steps that get the invoice paid and keep the relationship intact."},
+    "expected": {"brand": "tallybridge"}
+  },
+  {
+    "id": "route-09",
+    "brand": "tallybridge",
+    "kind": "routing",
+    "material": {"text": "We just passed one million invoices sent through the platform this year. Please thank our customers and keep it sober."},
+    "expected": {"brand": "tallybridge"}
+  },
+  {
+    "id": "route-10",
+    "brand": "tallybridge",
+    "kind": "routing",
+    "material": {"text": "Webinar recap: 180 people joined our session on the EU e-invoicing mandates. The top questions were about Peppol and archiving requirements."},
+    "expected": {"brand": "tallybridge"}
+  },
+  {
+    "id": "route-11",
+    "brand": "tallybridge",
+    "kind": "routing",
+    "material": {"text": "Tallybridge: announce that the reminder editor now supports different templates per customer segment."},
+    "expected": {"brand": "tallybridge"}
+  },
+  {
+    "id": "route-12",
+    "brand": "marea-fitness",
+    "kind": "routing",
+    "material": {"text": "Este sábado hay clase especial de movilidad en la playa a las 09:30. Trae tu esterilla y agua."},
+    "expected": {"brand": "marea-fitness"}
+  },
+  {
+    "id": "route-13",
+    "brand": "marea-fitness",
+    "kind": "routing",
+    "material": {"text": "New rowing machines arrived: we now have 10, so the Row class goes up to 10 people from next week."},
+    "expected": {"brand": "marea-fitness"}
+  },
+  {
+    "id": "route-14",
+    "brand": "marea-fitness",
+    "kind": "routing",
+    "material": {"text": "Queremos felicitar al grupo de las 07:00 por completar el reto de 30 días de sentadillas. ¡Qué constancia!"},
+    "expected": {"brand": "marea-fitness"}
+  },
+  {
+    "id": "route-15",
+    "brand": "marea-fitness",
+    "kind": "routing",
+    "material": {"text": "Kettlebell workshop with Tomás on Saturday at 10:00: 90 minutes of technique for swings and cleans, all levels welcome."},
+    "expected": {"brand": "marea-fitness"}
+  },
+  {
+    "id": "route-16",
+    "brand": "marea-fitness",
+    "kind": "routing",
+    "material": {"text": "Para Marea: recordad a todo el mundo que en agosto cerramos la segunda quincena por vacaciones."},
+    "expected": {"brand": "marea-fitness"}
+  }
+]

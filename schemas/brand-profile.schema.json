@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "brand-profile",
+  "title": "Brand profile (brand book as config)",
+  "description": "Content-related brand settings (tz BP-1). Versioned: every change is a new row in brand_profile_versions. Operational settings (platform connections, schedules, auto-publish, budget) live in tables and in the brand config YAML next to this profile.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["basics", "voice", "required_elements", "visual", "examples", "platforms", "digest"],
+  "properties": {
+    "basics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "niche", "audience", "languages", "timezone", "topics", "facts"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "description": { "type": "string", "minLength": 10, "maxLength": 1200 },
+        "niche": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "audience": { "type": "string", "minLength": 5, "maxLength": 800 },
+        "languages": {
+          "description": "ISO 639-1 codes. First one is the default content language.",
+          "type": "array", "minItems": 1, "maxItems": 4,
+          "items": { "type": "string", "pattern": "^[a-z]{2}$" }
+        },
+        "timezone": { "type": "string", "description": "IANA time zone, e.g. Europe/Berlin", "minLength": 3 },
+        "website": { "type": ["string", "null"] },
+        "topics": {
+          "description": "Themes the brand posts about. Used for brand detection and relevance.",
+          "type": "array", "maxItems": 30, "items": { "type": "string" }
+        },
+        "facts": {
+          "description": "Stable facts about the brand that generation may use (addresses, opening hours, product names, prices). Anything not here or in the source material must not be invented (GN-2).",
+          "type": "array", "maxItems": 50, "items": { "type": "string" }
+        }
+      }
+    },
+    "voice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tone", "style", "address", "emoji", "allowed_words", "forbidden_words", "allowed_topics", "forbidden_topics"],
+      "properties": {
+        "tone": { "type": "string", "description": "e.g. friendly, warm, playful", "minLength": 2 },
+        "style": { "type": "string", "description": "Sentence length, structure, humour, jargon level", "minLength": 2 },
+        "address": { "type": "string", "enum": ["informal", "formal"], "description": "informal = ty/du/tu, formal = vy/Sie/vous" },
+        "emoji": { "type": "string", "enum": ["none", "sparing", "rich"] },
+        "allowed_words": { "type": "array", "maxItems": 100, "items": { "type": "string" } },
+        "forbidden_words": { "type": "array", "maxItems": 200, "items": { "type": "string" } },
+        "allowed_topics": { "type": "array", "maxItems": 50, "items": { "type": "string" } },
+        "forbidden_topics": { "type": "array", "maxItems": 50, "items": { "type": "string" } }
+      }
+    },
+    "required_elements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cta", "links", "hashtags", "disclaimers", "signature"],
+      "properties": {
+        "cta": {
+          "description": "Accepted call-to-action phrasings. When 'platforms' is non-empty, one of 'phrases' must appear in variants for those platforms.",
+          "type": "object", "additionalProperties": false, "required": ["phrases", "platforms"],
+          "properties": {
+            "phrases": { "type": "array", "maxItems": 10, "items": { "type": "string" } },
+            "platforms": { "$ref": "#/$defs/platformList" }
+          }
+        },
+        "links": {
+          "type": "array", "maxItems": 10,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["label", "url", "utm", "platforms"],
+            "properties": {
+              "label": { "type": "string" },
+              "url": { "type": "string" },
+              "utm": {
+                "description": "UTM parameters appended to the URL. {platform} and {date} are substituted.",
+                "type": "object", "additionalProperties": false, "required": ["source", "medium", "campaign"],
+                "properties": {
+                  "source": { "type": ["string", "null"] },
+                  "medium": { "type": ["string", "null"] },
+                  "campaign": { "type": ["string", "null"] }
+                }
+              },
+              "platforms": { "$ref": "#/$defs/platformList" }
+            }
+          }
+        },
+        "hashtags": {
+          "type": "object", "additionalProperties": false, "required": ["required", "pool", "max", "platforms"],
+          "properties": {
+            "required": { "type": "array", "maxItems": 5, "items": { "type": "string", "pattern": "^#\\S+$" } },
+            "pool": { "type": "array", "maxItems": 50, "items": { "type": "string", "pattern": "^#\\S+$" } },
+            "max": { "type": "integer", "minimum": 0, "maximum": 30 },
+            "platforms": { "$ref": "#/$defs/platformList" }
+          }
+        },
+        "disclaimers": {
+          "type": "array", "maxItems": 5,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["text", "platforms"],
+            "properties": {
+              "text": { "type": "string" },
+              "platforms": { "$ref": "#/$defs/platformList" }
+            }
+          }
+        },
+        "signature": {
+          "type": "object", "additionalProperties": false, "required": ["text", "platforms"],
+          "properties": {
+            "text": { "type": ["string", "null"] },
+            "platforms": { "$ref": "#/$defs/platformList" }
+          }
+        }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["palette", "image_style", "logo", "forbidden"],
+      "properties": {
+        "palette": { "type": "array", "maxItems": 8, "items": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" } },
+        "image_style": { "type": "string", "description": "Photography/illustration style, lighting, composition, mood", "minLength": 5 },
+        "logo": {
+          "description": "Logo overlay rules. asset_key points to a PNG with transparency in object storage. null = no logo.",
+          "type": ["object", "null"], "additionalProperties": false,
+          "required": ["asset_key", "position", "size_pct", "margin_pct"],
+          "properties": {
+            "asset_key": { "type": "string" },
+            "position": { "type": "string", "enum": ["top-left", "top-right", "bottom-left", "bottom-right"] },
+            "size_pct": { "type": "integer", "minimum": 5, "maximum": 30, "description": "Logo width as % of image width" },
+            "margin_pct": { "type": "integer", "minimum": 0, "maximum": 10 }
+          }
+        },
+        "forbidden": {
+          "description": "Things that must never appear in images. People, third-party logos and text are always forbidden by the system.",
+          "type": "array", "maxItems": 30, "items": { "type": "string" }
+        }
+      }
+    },
+    "examples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["good", "bad"],
+      "properties": {
+        "good": {
+          "description": "5-20 reference posts that show the voice (tz BP-1).",
+          "type": "array", "maxItems": 20,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["platform", "text"],
+            "properties": {
+              "platform": { "$ref": "#/$defs/platformOrAny" },
+              "text": { "type": "string", "minLength": 20 }
+            }
+          }
+        },
+        "bad": {
+          "type": "array", "maxItems": 20,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["text", "why"],
+            "properties": {
+              "text": { "type": "string" },
+              "why": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "platforms": {
+      "description": "Per-platform format overrides on top of config/platforms.json (tz section 6).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["telegram", "blog", "email", "linkedin", "instagram", "facebook", "x"],
+      "properties": {
+        "telegram": { "$ref": "#/$defs/platformOverride" },
+        "blog": { "$ref": "#/$defs/platformOverride" },
+        "email": { "$ref": "#/$defs/platformOverride" },
+        "linkedin": { "$ref": "#/$defs/platformOverride" },
+        "instagram": { "$ref": "#/$defs/platformOverride" },
+        "facebook": { "$ref": "#/$defs/platformOverride" },
+        "x": { "$ref": "#/$defs/platformOverride" }
+      }
+    },
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "intro_style", "footer_text", "cta"],
+      "properties": {
+        "title": { "type": "string", "description": "Newsletter name shown in the email header" },
+        "intro_style": { "type": "string" },
+        "footer_text": { "type": "string" },
+        "cta": {
+          "type": ["object", "null"], "additionalProperties": false, "required": ["text", "url"],
+          "properties": { "text": { "type": "string" }, "url": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "platform": { "type": "string", "enum": ["telegram", "blog", "email", "linkedin", "instagram", "facebook", "x"] },
+    "platformOrAny": { "type": "string", "enum": ["any", "telegram", "blog", "email", "linkedin", "instagram", "facebook", "x"] },
+    "platformList": { "type": "array", "items": { "$ref": "#/$defs/platform" } },
+    "platformOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["notes", "max_chars", "image_aspect"],
+      "properties": {
+        "notes": { "type": ["string", "null"], "description": "Extra instructions for this platform" },
+        "max_chars": { "type": ["integer", "null"], "description": "Stricter length limit than the platform default" },
+        "image_aspect": { "type": ["string", "null"], "enum": ["16:9", "1:1", "4:5", null] }
+      }
+    }
+  }
+}

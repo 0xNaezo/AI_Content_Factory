@@ -1,0 +1,283 @@
+# Demo brand: B2B SaaS for invoicing and accounts-receivable automation (expert, precise, formal, no emoji). Fictional company.
+# Links use the reserved .example domain: replace with real URLs before the brand goes live.
+brand:
+  slug: tallybridge
+  name: Tallybridge
+  timezone: Europe/Amsterdam
+  blog_domain: null
+  monthly_budget_usd: 50
+
+profile:
+  basics:
+    name: Tallybridge
+    description: >-
+      Tallybridge is accounts-receivable automation software for B2B companies. It creates and sends invoices
+      from billing data, runs automated reminder sequences for overdue invoices, matches incoming bank payments
+      to open invoices and gives finance teams a live view of the cash coming in.
+    niche: B2B SaaS — invoicing and accounts-receivable (AR) automation for finance teams
+    audience: >-
+      CFOs, finance managers, controllers and AR specialists at European B2B companies with 20–500 employees
+      that send hundreds of invoices a month; founders who still run finance themselves.
+    languages: [en]
+    timezone: Europe/Amsterdam
+    website: "https://tallybridge.example"
+    topics:
+      - accounts receivable automation
+      - invoicing and invoice delivery
+      - payment reminders and collections
+      - bank reconciliation and payment matching
+      - cash flow visibility and forecasting
+      - days sales outstanding (DSO)
+      - month-end close
+      - EU e-invoicing regulation
+      - finance team productivity
+      - product updates and integrations
+      - customer case studies
+      - security and data protection for finance data
+    facts:
+      - "Plans: Starter €79 per month (up to 150 invoices a month), Growth €249 per month (up to 1,000 invoices a month), Scale with custom pricing (unlimited invoices, SSO and a dedicated success manager)."
+      - "Every plan starts with a 14-day trial; no credit card required."
+      - "Annual billing: pay for 10 months, get 12."
+      - "Automated reminder sequences with up to 5 steps per invoice; tone and timing are configurable."
+      - "Payment matching automatically matches incoming bank payments to open invoices; the average automatic match rate across customers in 2025 was 92%."
+      - "Customers report an average DSO reduction of 11 days after six months (2025 customer survey)."
+      - "Integrations with 14 accounting and ERP systems, plus a REST API and CSV import."
+      - "Customer portal where clients view their invoices and pay by card, SEPA Direct Debit or bank transfer."
+      - "E-invoicing via the Peppol network."
+      - "Customer data is hosted in the EU (Frankfurt); GDPR-compliant; a SOC 2 Type II report is available on request."
+      - "Founded in 2021 in Amsterdam; a team of 38 people."
+      - "More than 600 finance teams in 11 European countries use Tallybridge."
+      - "Guided onboarding takes two weeks on average."
+      - "Support by live chat and email, Monday to Friday 08:00–18:00 CET."
+      - "Product updates ship every two weeks; the changelog is at tallybridge.example/changelog."
+  voice:
+    tone: expert, precise, calm, helpful
+    style: >-
+      Clear, concrete sentences in British English. Open with the finance team's situation, then explain the
+      mechanism, then the outcome. Exact numbers only from the facts; define acronyms on first use (DSO, AR).
+      Short paragraphs, no exclamation marks, no hype; confident but modest. The product appears as a practical
+      option, never as a miracle.
+    address: formal
+    emoji: none
+    allowed_words: [accounts receivable, cash flow, DSO, reconciliation, month-end close, reminder sequence, audit trail, finance team]
+    forbidden_words: [revolutionary, game-changer, game changer, disrupt, disruptive, synergy, effortless, magic, guaranteed, cheap, ninja, rockstar, 10x]
+    allowed_topics:
+      - finance operations best practice
+      - EU e-invoicing (general overview)
+      - product releases
+      - customer stories
+      - hiring and company news
+    forbidden_topics:
+      - "personalised tax, legal or investment advice for a specific company"
+      - competitor comparisons
+      - cryptocurrency
+      - politics
+  required_elements:
+    cta:
+      phrases: [Book a 20-minute demo, Start your 14-day trial]
+      platforms: [telegram, blog, linkedin, facebook]
+    links:
+      - label: Book a demo
+        url: "https://tallybridge.example/demo"
+        utm:
+          source: "{platform}"
+          medium: social
+          campaign: "demo_{date}"
+        platforms: [telegram, linkedin, facebook, x]
+      - label: Book a demo
+        url: "https://tallybridge.example/demo"
+        utm:
+          source: blog
+          medium: content
+          campaign: "demo_{date}"
+        platforms: [blog]
+    hashtags:
+      required: []
+      pool: ["#AccountsReceivable", "#CashFlow", "#FinanceOps", "#CFO", "#EInvoicing", "#DSO", "#Fintech"]
+      max: 2
+      platforms: [instagram, x]
+    disclaimers:
+      - text: "This article is for general information and is not legal or tax advice."
+        platforms: [blog]
+    signature:
+      text: null
+      platforms: []
+  visual:
+    palette: ["#0B2545", "#134074", "#8DA9C4", "#EEF4ED", "#F2A541"]
+    image_style: >-
+      Clean, minimal 3D illustration with soft studio lighting: abstract paper sheets, envelopes, connecting lines,
+      gentle arrows and flowing ribbons suggesting documents and payments moving smoothly; matte materials,
+      rounded forms, generous negative space, calm and confident mood.
+    logo: null
+    forbidden:
+      - people or hands
+      - "readable text, numbers or currency symbols"
+      - "cash, banknotes or coins"
+      - computer screens showing dashboards
+      - handshakes and office stock-photo scenes
+  examples:
+    good:
+      - platform: linkedin
+        text: |-
+          When did your team last send every payment reminder on time during month-end close?
+
+          In many finance teams, follow-up depends on one person remembering to do it — and month-end is exactly when nobody has time.
+
+          Tallybridge runs a reminder sequence of up to five steps for every invoice, with the tone and timing you choose. Your team handles the exceptions; the routine follow-up happens on schedule.
+
+          If collections still live in a spreadsheet, it is worth 20 minutes to see the alternative. Book a 20-minute demo.
+      - platform: any
+        text: >-
+          Month-end close should not start with a hunt through bank statements. Tallybridge matches incoming payments
+          to open invoices automatically: in 2025 the average automatic match rate across our customers was 92%.
+          Your team reviews the exceptions instead of every line.
+      - platform: telegram
+        text: |-
+          Product update: credit notes now sync automatically.
+
+          When you issue a credit note in Tallybridge, it is linked to the original invoice, the open balance is updated and the reminder sequence stops for the credited amount. Your accounting system receives the credit note in the same sync as your invoices.
+
+          Start your 14-day trial, or book a 20-minute demo to see it on your own data.
+      - platform: x
+        text: "Reconciling bank payments by hand at month-end? Tallybridge matches incoming payments to open invoices automatically: a 92% average match rate across customers in 2025."
+      - platform: email
+        text: |-
+          Three views every AR team should check weekly
+
+          Days sales outstanding (DSO) describes the past quarter. For this week's decisions, three views help more: invoices overdue by age bucket, payment promises that fall due, and disputed invoices waiting for an answer. Each can be saved as a Tallybridge report and sent to your inbox every Monday morning. If you review only one, start with promises due: it shows which expected payments need a call before they slip.
+      - platform: blog
+        text: |-
+          Why DSO rises at the end of the quarter
+
+          Days sales outstanding (DSO) measures how long it takes, on average, to collect payment after invoicing. If yours creeps up at quarter-end, look at what happens to follow-up when invoicing volume peaks. The fix is rarely a new policy; it is a follow-up routine that does not depend on anyone's calendar. This article walks through where the delay comes from and how to build that routine, step by step.
+      - platform: facebook
+        text: "Still matching payments to invoices by hand at month-end? Tallybridge does the matching automatically and flags only the exceptions for review. Book a 20-minute demo and see it on your own data."
+      - platform: instagram
+        text: |-
+          Invoices out. Reminders on schedule. Payments matched.
+
+          That is accounts receivable with Tallybridge: your finance team spends its time on the exceptions, not on the routine.
+
+          #AccountsReceivable #FinanceOps
+    bad:
+      - text: "🚀 Tallybridge is a REVOLUTIONARY game-changer that will 10x your finance team!!!"
+        why: "Hype, emoji (the brand uses none), forbidden words (revolutionary, game-changer, 10x) and no substance."
+      - text: "Our AI guarantees you will never have a late payment again."
+        why: "An invented promise and guarantee; nothing in our facts supports it."
+      - text: "Unlike other AR tools that barely work, we actually deliver."
+        why: "A competitor comparison (forbidden topic) and snark instead of a concrete point."
+  platforms:
+    telegram:
+      notes: "Product and industry news in 2–3 short paragraphs; end with the CTA and the link."
+      max_chars: null
+      image_aspect: null
+    blog:
+      notes: "Practical, expert articles for finance teams; the product may appear in one closing section as an option, never as a sales pitch throughout. The disclaimer is the last paragraph."
+      max_chars: null
+      image_aspect: null
+    email:
+      notes: null
+      max_chars: null
+      image_aspect: null
+    linkedin:
+      notes: "Open with a concrete finance-team situation or question; no hashtags."
+      max_chars: null
+      image_aspect: null
+    instagram:
+      notes: "A short caption that reads well next to an abstract illustration."
+      max_chars: 800
+      image_aspect: null
+    facebook:
+      notes: null
+      max_chars: null
+      image_aspect: null
+    x:
+      notes: "One post when possible; at most one hashtag."
+      max_chars: null
+      image_aspect: null
+  digest:
+    title: The Receivables Brief
+    intro_style: "Two or three crisp, formal sentences for finance leaders that frame the issue's theme; expert and calm, no hype."
+    footer_text: "Tallybridge · Amsterdam, the Netherlands. You receive this newsletter because you subscribed on the Tallybridge blog."
+    cta:
+      text: Book a 20-minute demo
+      url: "https://tallybridge.example/demo"
+
+platforms:
+  - platform: telegram
+    language: en
+    mode: real
+    active: true
+    auto_publish: false
+    target: {chat_id: "@tallybridge_demo"}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5], times: ["10:00"]}
+      max_per_day: 1
+      min_interval_minutes: 720
+  - platform: blog
+    language: en
+    mode: real
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [2, 4], times: ["09:00"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: email
+    language: en
+    mode: real
+    active: true
+    auto_publish: false
+    target: {from_name: Tallybridge}
+    schedule: {frequency: weekly, day: 4, time: "08:30", auto_send: false}
+  - platform: linkedin
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [2, 3, 4], times: ["08:30"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: instagram
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 4], times: ["12:30"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: facebook
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [3], times: ["11:00"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: x
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5], times: ["09:30", "15:30"]}
+      max_per_day: 2
+      min_interval_minutes: 240
+
+feeds:
+  - https://www.cfodive.com/feeds/news/
+  - https://www.paymentsdive.com/feeds/news/

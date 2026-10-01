@@ -1,0 +1,72 @@
+[
+  {
+    "id": "kc-gen-01",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Autumn menu starts Monday! Two new drinks: maple pecan latte (£3.90) and spiced pear chai (£3.60), both fine with oat milk. Plus Maya's new pumpkin and sage sausage roll, £4.20, weekends only. Please share on all channels."},
+    "expected": {"facts": ["maple pecan", "£3.90", "Monday"], "forbidden_claims": ["20%", "limited edition", "gluten-free"]}
+  },
+  {
+    "id": "kc-gen-02",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Latte Art Social this Thursday, 18:30 to 20:00, hosted by Tom. £12 per person including two drinks. Only 10 spots because we've only got two steam wands, so book at the counter. Total beginners welcome."},
+    "expected": {"facts": ["18:30", "£12", "Thursday"], "forbidden_claims": ["certificate", "every Thursday", "£10"]}
+  },
+  {
+    "id": "kc-gen-03",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Blog idea from Tom: how to brew better filter coffee at home. His five rules:\n1) Weigh everything: 60 g of coffee per litre of water.\n2) Water just off the boil, about 94°C.\n3) Grind medium-coarse, roughly like sea salt.\n4) A pour-over should take about 3 to 4 minutes in total.\n5) Buy small bags and use the beans within a month of the roast date.\nHe says the most common mistake he sees is using too little coffee, not buying bad beans. Mention that we sell our Morning Kettle house blend in 250 g bags at the counter."},
+    "expected": {"facts": ["94", "250", "sea salt"], "forbidden_claims": ["organic", "single-origin", "Ethiopia"]}
+  },
+  {
+    "id": "kc-gen-04",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Sweet one for the socials: Mrs Patel from number 12 has come in every weekday since we opened. Yesterday she brought us a jar of her homemade lime pickle and told us our cardamom buns remind her of her mum's baking back in Leicester. We asked and she's happy for us to share this. Maybe a little thank-you post to all our regulars?"},
+    "expected": {"facts": ["Mrs Patel", "cardamom buns", "lime pickle"], "forbidden_claims": ["five years", "award", "daily"]}
+  },
+  {
+    "id": "kc-gen-05",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "ok so um the new oven's finally in, the big one, so from next week we're doing sourdough loaves, like proper loaves, er, Tuesday, Thursday and Saturday, I think they'll be four fifty each, maybe we'll do a seeded one too but not sure yet, anyway people can pre-order at the counter the day before, oh and the old oven's going to the community kitchen on Crane Street, that's nice, yeah that's it"},
+    "expected": {"facts": ["sourdough", "Tuesday", "pre-order"], "forbidden_claims": ["gluten-free", "daily", "£5"]}
+  },
+  {
+    "id": "kc-gen-06",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Rainy week ahead. Oat milk hot chocolate is back, £3.40. That's it, that's the post."},
+    "expected": {"facts": ["hot chocolate", "£3.40"], "forbidden_claims": ["marshmallow", "whipped cream", "homemade"]}
+  },
+  {
+    "id": "kc-gen-07",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Heads up for customers: from Monday we open at 7:00 on weekdays instead of 7:30, because lots of you asked for an earlier flat white before the commute. Weekends stay the same, 8:30 to 17:00. Closing time doesn't change."},
+    "expected": {"facts": ["7:00", "7:30", "8:30"], "forbidden_claims": ["6:30", "22:00", "open late"]}
+  },
+  {
+    "id": "kc-gen-08",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Pup Cup Sunday! This Sunday from 10:00 every dog that visits gets a pup cup (a little cup of dog-safe whipped cream) while they last. We've made 40. We're also collecting donations for the Crane Street Dog Rescue, there's a jar on the counter."},
+    "expected": {"facts": ["Sunday", "10:00", "40"], "forbidden_claims": ["biscuits", "all day", "every Sunday"]}
+  },
+  {
+    "id": "kc-gen-09",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "Our house espresso blend Morning Kettle is getting a new recipe from next month: 60% Brazil, 40% Colombia (it used to be 70/30 Brazil and Guatemala). It tastes more like milk chocolate and red apple now, a bit less nutty. Same price, still roasted for us in Yorkshire. Would love a behind-the-scenes version for LinkedIn too."},
+    "expected": {"facts": ["Morning Kettle", "Colombia", "milk chocolate"], "forbidden_claims": ["organic", "Fairtrade", "direct trade"]}
+  },
+  {
+    "id": "kc-gen-10",
+    "brand": "kettle-crumb",
+    "kind": "generation",
+    "material": {"text": "We've put a proper corkboard up by the window: the neighbourhood noticeboard. Anyone can pin a card: lost cats, piano lessons, spare allotment plots, choir practice, you name it. Cards need to be A6 or smaller, and we clear the board on the first Monday of each month. No adverts for big businesses please, local folk only. The idea came from Tom's gran, who ran one in her corner shop for 30 years."},
+    "expected": {"facts": ["noticeboard", "A6", "first Monday"], "forbidden_claims": ["digital", "every Monday", "for a fee"]}
+  }
+]

@@ -1,0 +1,520 @@
+{
+  "id": "acfOutbox0000001",
+  "name": "CORE · Notify",
+  "nodes": [
+    {
+      "id": "7bb3d4db-86df-59b0-8a52-c0d39fce4b4d",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## CORE · Notify (outbox sender)\n**Purpose**: send everything the bot says and system emails from the outbox: one in-flight message per chat, send-then-edit slots (cards, acks), merged batches, retries (429 retry_after, 5xx backoff), blocked-bot detection.\n**Trigger**: every 5 s + fast path.\n**Side effects**: outbox statuses, tg_message_slots, Telegram file ids.\n**Secrets**: the bot token is added by the egress proxy; Resend key is the credential.\n**TZ**: AP-1, IN-4, architecture 7.12.",
+        "height": 192,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "d4767d5e-6feb-5469-b8f7-8cc088dc71aa",
+      "name": "Every 5 s",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8a37014d-6ec0-5154-a9a7-5e051c36121f",
+      "name": "Fast path",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        170
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "d394f3ac-c0c9-5c20-acf7-e1cf4fff9202",
+      "name": "Claim",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from claim_outbox(20)",
+        "options": {
+          "largeNumbersOutput": "numbers"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "87a1ee9c-2ee2-557b-be33-1a0f52037c8c",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 4,
+        "output": "={{ $json.channel === 'email' ? 0 : ($json.request.upload ? ($json.request.upload.s3_key ? 1 : 2) : 3) }}"
+      }
+    },
+    {
+      "id": "e42eae10-a634-531c-966f-536d6e7e2da2",
+      "name": "Send email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.resend_base }}/emails",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 600
+            }
+          }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.request.idempotency_key }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request.body) }}"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "acfCredResend001",
+          "name": "Resend API (Authorization: Bearer re_...)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "43bec1f1-c978-52a1-a843-9cae4ec7839d",
+      "name": "Get photo",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "bucketName": "={{ $json.bucket }}",
+        "fileKey": "={{ $json.request.upload.s3_key }}",
+        "binaryPropertyName": "data"
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "77eb404d-c96b-5a86-9a82-e2c2bc1d7ec4",
+      "name": "Multipart",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const { body: fields, upload: file } = items[i].json.request;\n  const form = Object.entries(fields)\n    .filter(([, v]) => v !== null && v !== undefined && v !== '')\n    .map(([name, v]) => ({ name, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }));\n  if (form.length > 6) throw new Error('too many form fields for the upload node: ' + form.length);\n  while (form.length < 6) form.push({ name: '_pad' + form.length, value: '' });\n  const content = file.text != null ? Buffer.from(file.text, 'utf8') : await this.helpers.getBinaryDataBuffer(i, 'data');\n  out.push({ json: { ...items[i].json, form, form_file: file.field },\n             binary: { file: await this.helpers.prepareBinaryData(content, file.filename, file.mime) }, pairedItem: i });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "06c3505d-6ad5-58e2-a034-8fb88b19a117",
+      "name": "Send file",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.api_base }}/{{ $json.request.method }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "={{ $json.form_file }}",
+              "inputDataFieldName": "file"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[0].name }}",
+              "value": "={{ $json.form[0].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[1].name }}",
+              "value": "={{ $json.form[1].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[2].name }}",
+              "value": "={{ $json.form[2].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[3].name }}",
+              "value": "={{ $json.form[3].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[4].name }}",
+              "value": "={{ $json.form[4].value }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "={{ $json.form[5].name }}",
+              "value": "={{ $json.form[5].value }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "19c0944f-7955-5b3e-ba2a-3e883ffbe702",
+      "name": "Send message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        340
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.api_base }}/{{ $json.request.method }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request.body) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "c987a314-3645-57a7-9ebf-2583b53def84",
+      "name": "Record result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select outbox_result($1, $2, $3::jsonb, $4) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [2].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Claim').item.json.id, $json.statusCode ?? 0, (typeof $json.body === 'object' && $json.body !== null) ? $json.body : { raw: String($json.body ?? '').slice(0, 500) }, $json.error ? String($json.error.message ?? $json.error).slice(0, 500) : null ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "f300cfb0-bf95-5e2b-a62e-bc3832b64e6b",
+      "name": "More?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ab29ef7-a4fc-507b-b92a-35ef1a8f19a1",
+              "leftValue": "={{ !!($json.flags && $json.flags.outbox) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "a20d879d-b080-50e9-927c-f2c215309e58",
+      "name": "Again",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfOutbox0000001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 5 s": {
+      "main": [
+        [
+          {
+            "node": "Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fast path": {
+      "main": [
+        [
+          {
+            "node": "Claim",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get photo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Multipart",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get photo": {
+      "main": [
+        [
+          {
+            "node": "Multipart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Multipart": {
+      "main": [
+        [
+          {
+            "node": "Send file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send file": {
+      "main": [
+        [
+          {
+            "node": "Record result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send email": {
+      "main": [
+        [
+          {
+            "node": "Record result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message": {
+      "main": [
+        [
+          {
+            "node": "Record result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record result": {
+      "main": [
+        [
+          {
+            "node": "More?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More?": {
+      "main": [
+        [
+          {
+            "node": "Again",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": true,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

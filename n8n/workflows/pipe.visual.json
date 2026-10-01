@@ -1,0 +1,1119 @@
+{
+  "id": "acfVisual0000001",
+  "name": "PIPE · Visual",
+  "nodes": [
+    {
+      "id": "999e7ed9-e1f1-51fe-ac9c-78ea4a2d9218",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## PIPE · Visual\n**Purpose**: one visual per package in every needed aspect (GN-3): the author's image (cropped, brand logo) or a generated image from the brief (first variant's brief; a separate brief call only if none) with the brand style; system rules: no people, text, logos. Generated images pass a vision check. Editor actions: regenerate, own upload (new variant versions, AP-3).\n**Input**: job {package_id, payload.mode: auto|regenerate|upload, payload.tg_file_id, payload.user_id, payload.wait}.\n**AI**: image.brief, image.generate, vision.check_image.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "d17c9311-10fc-5f67-8d87-ca7485948c74",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "f5885f09-c189-5f98-81f8-3d513f098861",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select visual_context($1, $2, $3) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.package_id, $json.payload.mode ?? 'auto', $json.payload.wait ?? 0 ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "c901e75f-e09f-536d-9f43-e8932b54f643",
+      "name": "Plan",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 5,
+        "output": "={{ $json.c.skip ? 0 : $json.c.wait_for_brief ? 1 : $json.c.mode === 'upload' ? 2 : ($json.c.source ? 3 : 4) }}"
+      }
+    },
+    {
+      "id": "fdb95314-034b-54f1-b3ee-a91610665a38",
+      "name": "Look later",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        -170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select visual_wait($1, $2) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.package_id, $('Job').first().json.payload.wait ?? 0 ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "624e211a-cfc9-5ca8-af0d-8acefd361c15",
+      "name": "Upload input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const c = $json.c; const p = $('Job').first().json.payload; return { json: { tg_file_id: p.tg_file_id, s3_key: c.s3_prefix + 'upload-' + $('Job').first().json.id + '.jpg', bucket: c.bucket, mime: p.mime || 'image/jpeg', telegram_base: c.telegram_base, telegram_file_base: c.telegram_file_base } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "8872fec5-491b-523e-b1a2-02bfd37320c9",
+      "name": "Download upload",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfTgFile0000001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "80b092cd-089e-5794-89fd-d4c1a4b94b0e",
+      "name": "Uploaded source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return { json: { src_key: $json.s3_key, origin: 'upload', check: null } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "1a585317-e6fc-5e7e-b611-2b74ad4c10a7",
+      "name": "Author source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "jsCode": "return { json: { src_key: $json.c.source.s3_key, origin: 'source', check: null } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "ff542b3b-0e5f-523c-b6be-5ebeecb7fe48",
+      "name": "Brief?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        340
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "9f59fa05-8784-5d3d-b8f4-5a8dd0b276a1",
+              "leftValue": "={{ !!($json.c.brief) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "a02011d9-f537-5cc1-b699-2d50a1055b89",
+      "name": "AI input: brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        510
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c; return { json: { route: 'image.brief', vars: c.vars, account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: c.material_id ?? null, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "a30496dd-526a-5b66-93d6-771e3cb4c3a1",
+      "name": "AI: brief",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        510
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "bff18422-9ee1-5b32-9526-ad56acb305c1",
+      "name": "Save brief",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1440,
+        510
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select save_visual_brief($1, $2)",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.package_id, $json.result.brief ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "bc78c636-f44f-5271-be66-48d8976e1c76",
+      "name": "Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c;\nconst brief = $('AI: brief').isExecuted ? $('AI: brief').first().json.result.brief : c.brief;\nconst v = c.vars || {};\nconst prompt = [brief, v.image_style ? 'Style: ' + v.image_style : null,\n  (v.palette || []).length ? 'Brand colors: ' + v.palette.join(', ') : null,\n  'Avoid: ' + [c.system_forbidden, ...(v.forbidden || [])].join(' ')].filter(Boolean).join('\\n');\nconst aspects = c.aspects || ['16:9'];\nreturn [{ json: { route: 'image.generate', prompt, aspect_ratio: aspects.includes('16:9') ? '16:9' : aspects[0],\n  account_type: c.account_type, brand_id: c.brand_id, material_id: c.material_id, package_id: c.package_id, job_id: $('Job').first().json.id } }];\n"
+      }
+    },
+    {
+      "id": "775f3be2-9950-56dc-b9fd-f44ff95c3f4b",
+      "name": "AI: image",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        340
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "b9c19718-7fce-5b09-8997-fc057702ff43",
+      "name": "Image file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c;\nconst r = $input.first().json.result;\nconst key = c.s3_prefix + 'gen-' + $('Job').first().json.id + '.png';\nreturn [{ json: { s3_key: key, bucket: c.bucket, mime: r.mime || 'image/png' },\n          binary: { data: await this.helpers.prepareBinaryData(Buffer.from(r.image_b64, 'base64'), 'generated.png', r.mime || 'image/png') } }];\n"
+      }
+    },
+    {
+      "id": "5abb706d-f2be-5154-ba4e-01f84cc050d8",
+      "name": "Store generated",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        340
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "bucketName": "={{ $json.bucket }}",
+        "fileName": "={{ $json.s3_key }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "94ca0efe-f457-566b-94a0-a5e8e4a4f5bb",
+      "name": "AI input: check image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c; const f = $('Image file').first().json; return { json: { route: 'vision.check_image', attachments: [{ kind: 'image', s3_key: f.s3_key, mime: f.mime }], vars: {}, account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: c.material_id ?? null, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "5e23262f-148d-5e8b-af89-4df1f75f961f",
+      "name": "AI: check image",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2880,
+        340
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "39e6b31d-720e-5e20-a8aa-8b5b48bcde18",
+      "name": "Image OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        340
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ed969eae-76c2-512e-b2a5-018195c0dc00",
+              "leftValue": "={{ !!($json.result.ok) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "21d97b4e-8caf-5ced-a645-859e26545d8b",
+      "name": "Generated source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        170
+      ],
+      "parameters": {
+        "jsCode": "return { json: { src_key: $('Image file').first().json.s3_key, origin: 'generated', check: $json.result } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "62ad7bf7-7171-51bd-9244-79233857c6fc",
+      "name": "Visual failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3360,
+        510
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select visual_done($1, $2, false, $3, $4) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.package_id, $('Context').first().json.c.mode, 'Generated image failed the check: ' + ($json.result.notes || ''), $('Job').first().json.payload.user_id ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "159e21c1-da2e-538b-a9ab-68da0bf491be",
+      "name": "Aspects",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c;\nconst src = $input.first().json;\nconst sizes = { '16:9': [1600, 900], '1:1': [1200, 1200], '4:5': [1080, 1350] };\nreturn (c.aspects || ['16:9']).map((a) => ({ json: {\n  aspect: a, width: sizes[a][0], height: sizes[a][1], src_key: src.src_key, origin: src.origin, check: src.check, bucket: c.bucket, logo: c.logo,\n  out_key: c.s3_prefix + a.replace(':', 'x') + '-' + $('Job').first().json.id + '.jpg' } }));\n"
+      }
+    },
+    {
+      "id": "4464a950-a5ee-52d4-89f2-cbda3be74510",
+      "name": "Get source",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        3840,
+        170
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "bucketName": "={{ $json.bucket }}",
+        "fileKey": "={{ $json.src_key }}",
+        "binaryPropertyName": "data"
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "21fa4f8b-8f4d-5b27-9bf8-8cbcc5dac138",
+      "name": "Logo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4080,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ae5b1c1-c490-5f73-9de9-62c2df954de5",
+              "leftValue": "={{ !!($('Aspects').item.json.logo && $('Aspects').item.json.logo.asset_key) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "f041f3e1-6546-5137-a435-f107a8ecbc33",
+      "name": "Get logo",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        4320,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "bucketName": "={{ $('Aspects').item.json.bucket }}",
+        "fileKey": "={{ $('Aspects').item.json.logo.asset_key }}",
+        "binaryPropertyName": "logo"
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "005e7fe5-d6b7-5139-a226-d19215bcc687",
+      "name": "Fit with logo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Context').first().json.c.extractor_base }}/image/fit",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "data"
+            },
+            {
+              "parameterType": "formData",
+              "name": "width",
+              "value": "={{ $('Aspects').item.json.width }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "height",
+              "value": "={{ $('Aspects').item.json.height }}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "logo",
+              "inputDataFieldName": "logo"
+            },
+            {
+              "parameterType": "formData",
+              "name": "logo_position",
+              "value": "={{ $('Aspects').item.json.logo.position }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "logo_size_pct",
+              "value": "={{ $('Aspects').item.json.logo.size_pct }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "logo_margin_pct",
+              "value": "={{ $('Aspects').item.json.logo.margin_pct }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "183ede72-a7e5-5294-b960-de51e6d081a4",
+      "name": "Fit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        340
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Context').first().json.c.extractor_base }}/image/fit",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "data"
+            },
+            {
+              "parameterType": "formData",
+              "name": "width",
+              "value": "={{ $('Aspects').item.json.width }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "height",
+              "value": "={{ $('Aspects').item.json.height }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "baf7dae6-975c-59bb-91ec-1dc66356a37e",
+      "name": "Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4800,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n  out.push({ json: { sha256: crypto.createHash('sha256').update(buf).digest('hex'), bytes: buf.length }, binary: items[i].binary, pairedItem: i });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "fdbbfa16-2ad8-59af-b1db-3895205c7f04",
+      "name": "Store",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        5040,
+        170
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "bucketName": "={{ $('Aspects').item.json.bucket }}",
+        "fileName": "={{ $('Aspects').item.json.out_key }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "a296f08e-2ddd-5a01-9315-309a41f1312e",
+      "name": "Save visual",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5280,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select save_visual($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, true) as asset_id",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [9].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.package_id, $('Aspects').item.json.aspect, $('Aspects').item.json.out_key, $('Meta').item.json.sha256, 'image/jpeg', $('Meta').item.json.bytes, $('Aspects').item.json.width, $('Aspects').item.json.height, $('Aspects').item.json.origin, $('Aspects').item.json.check ?? null ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "1d989884-c389-5768-816a-4c68ab1c0e9d",
+      "name": "Done",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5520,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select visual_done($1, $2, true, null, $3) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.package_id, $('Context').first().json.c.mode, $('Job').first().json.payload.user_id ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      },
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "AI input: brief": {
+      "main": [
+        [
+          {
+            "node": "AI: brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI input: check image": {
+      "main": [
+        [
+          {
+            "node": "AI: check image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Look later",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upload input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Author source",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Brief?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload input": {
+      "main": [
+        [
+          {
+            "node": "Download upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download upload": {
+      "main": [
+        [
+          {
+            "node": "Uploaded source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uploaded source": {
+      "main": [
+        [
+          {
+            "node": "Aspects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Author source": {
+      "main": [
+        [
+          {
+            "node": "Aspects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brief?": {
+      "main": [
+        [
+          {
+            "node": "Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI input: brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: brief": {
+      "main": [
+        [
+          {
+            "node": "Save brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save brief": {
+      "main": [
+        [
+          {
+            "node": "Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI: image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: image": {
+      "main": [
+        [
+          {
+            "node": "Image file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image file": {
+      "main": [
+        [
+          {
+            "node": "Store generated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store generated": {
+      "main": [
+        [
+          {
+            "node": "AI input: check image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: check image": {
+      "main": [
+        [
+          {
+            "node": "Image OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image OK?": {
+      "main": [
+        [
+          {
+            "node": "Generated source",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Visual failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generated source": {
+      "main": [
+        [
+          {
+            "node": "Aspects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aspects": {
+      "main": [
+        [
+          {
+            "node": "Get source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get source": {
+      "main": [
+        [
+          {
+            "node": "Logo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logo?": {
+      "main": [
+        [
+          {
+            "node": "Get logo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get logo": {
+      "main": [
+        [
+          {
+            "node": "Fit with logo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit with logo": {
+      "main": [
+        [
+          {
+            "node": "Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit": {
+      "main": [
+        [
+          {
+            "node": "Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Meta": {
+      "main": [
+        [
+          {
+            "node": "Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store": {
+      "main": [
+        [
+          {
+            "node": "Save visual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save visual": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

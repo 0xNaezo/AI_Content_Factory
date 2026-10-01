@@ -1,0 +1,29 @@
+# Prod overlay (one VPS): docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Public: HTTPS for the web service (panel, blogs incl. custom domains via on-demand TLS) and only the two external
+# n8n webhooks. The n8n editor stays on 127.0.0.1:5679 (SSH tunnel). Nightly: scripts/backup.sh from host cron.
+services:
+  caddy:
+    image: caddy:2.11-alpine
+    restart: unless-stopped
+    depends_on: [web, n8n]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+      N8N_DOMAIN: ${N8N_DOMAIN:?set N8N_DOMAIN (host of PUBLIC_N8N_URL)}
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
+  n8n:
+    environment:
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?required in prod, keep a copy outside DB backups}
+      N8N_WEBHOOK_URL: ${PUBLIC_N8N_URL:?}
+
+  web:
+    environment:
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:?}
+
+volumes:
+  caddy_data:

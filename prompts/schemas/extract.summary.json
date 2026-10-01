@@ -1,0 +1,179 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "language",
+    "main_idea",
+    "key_points",
+    "facts",
+    "quotes",
+    "cta",
+    "links",
+    "sufficient",
+    "missing_info",
+    "clarifying_question",
+    "hints",
+    "moderation"
+  ],
+  "properties": {
+    "language": {
+      "type": "string",
+      "description": "ISO 639-1 code of the source language"
+    },
+    "main_idea": {
+      "type": "string",
+      "description": "The main message in one or two sentences, in English"
+    },
+    "key_points": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fact",
+          "source_quote"
+        ],
+        "properties": {
+          "fact": {
+            "type": "string"
+          },
+          "source_quote": {
+            "type": "string",
+            "description": "Exact quote from the source"
+          }
+        }
+      }
+    },
+    "quotes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Notable direct quotes worth reusing verbatim"
+    },
+    "cta": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Call to action present in the source, if any"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs from the source"
+    },
+    "sufficient": {
+      "type": "boolean",
+      "description": "true if there is enough substance for a good post"
+    },
+    "missing_info": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "What is missing if not sufficient"
+    },
+    "clarifying_question": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "ONE short question to the author if not sufficient"
+    },
+    "hints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "brands",
+        "platforms",
+        "publish_at",
+        "tone",
+        "digest_only",
+        "urgent"
+      ],
+      "properties": {
+        "brands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Brand names the author explicitly addressed the material to"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "telegram",
+              "blog",
+              "email",
+              "linkedin",
+              "instagram",
+              "facebook",
+              "x"
+            ]
+          },
+          "description": "Platforms the author explicitly asked for"
+        },
+        "publish_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Local date-time YYYY-MM-DDTHH:MM if the author asked for a publication time"
+        },
+        "tone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Tone the author asked for"
+        },
+        "digest_only": {
+          "type": "boolean",
+          "description": "Author asked to use it only in the newsletter"
+        },
+        "urgent": {
+          "type": "boolean",
+          "description": "Author marked it urgent"
+        }
+      }
+    },
+    "moderation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "flagged",
+        "categories",
+        "reason"
+      ],
+      "properties": {
+        "flagged": {
+          "type": "boolean",
+          "description": "Offensive, hateful, sexual, violent or illegal content"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

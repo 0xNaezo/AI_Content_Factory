@@ -1,0 +1,231 @@
+{
+  "id": "acfSummarize0001",
+  "name": "PIPE · Summarize",
+  "nodes": [
+    {
+      "id": "8b8b07de-9c50-518f-acad-2c13c37ea156",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## PIPE · Summarize\n**Purpose**: summary, language, facts, sufficiency, author hints, guest moderation (EX-2…EX-4); then duplicates, clarifying question or routing (decided in save_summary).\n**Input**: job {material_id}.\n**AI**: extract.summary (system budget; guest/eval own budgets).",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "6f8fecb9-0b8e-5013-9fe9-ad091edb4ce1",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "e4c0c7b8-23f5-5155-8b6f-4195e0f9abbe",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select summarize_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.material_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "67be071f-098b-52b6-b5a0-9448e8c070df",
+      "name": "Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "172512fa-063d-50d7-886c-6e870f0c2ddc",
+              "leftValue": "={{ !!($json.c.skip) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "3eb43097-5db4-5fe4-84a2-5333b471ee89",
+      "name": "AI input: summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const c = $json.c; return { json: { route: 'extract.summary', vars: c.vars, account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: c.material_id ?? null, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "34759b17-8895-5178-bef0-40ee7dd7b450",
+      "name": "AI: summary",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "fb8b2aa7-262f-5323-9231-fd84675956b1",
+      "name": "Save",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select save_summary($1, $2, $3::jsonb) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [2].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Context').first().json.c.material_id, $('Context').first().json.c.revision, $json.result ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI input: summary": {
+      "main": [
+        [
+          {
+            "node": "AI: summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Skip?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI input: summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: summary": {
+      "main": [
+        [
+          {
+            "node": "Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

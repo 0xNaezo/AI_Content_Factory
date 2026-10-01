@@ -1,0 +1,453 @@
+{
+  "id": "acfDigestBuild01",
+  "name": "DG · Build",
+  "nodes": [
+    {
+      "id": "9d931000-3a06-5399-bbe8-5e319135dcc2",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## DG · Build\n**Purpose**: build the issue 2 h before sending (DG-2…DG-4, DG-7): approved email blocks of the period + relevant external topics (feed items rewritten as blocks), subject / preheader / intro / order from AI, HTML from the template; fewer than 2 blocks -> skipped; else the card with approve / test send / preview goes to editors.\n**Input**: job {payload.issue_id}.\n**AI**: digest.feed_block, digest.compose.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "389f2d7e-0c26-5abf-82b7-9624cc4284f0",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "d218cfb3-202b-562d-aed6-0d1c693a083d",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select digest_build_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.payload.issue_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "398a2b81-523a-5e3a-b0e6-a358734bacb8",
+      "name": "Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ac6b037c-6379-5e7a-93a0-aa5421d05808",
+              "leftValue": "={{ !!($json.c.skip) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "c21de05f-cef1-5d0c-afca-9923c2062880",
+      "name": "Feed items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e332ee58-70d4-59b6-b6fa-1c6075f6be7e",
+              "leftValue": "={{ !!(($json.c.feed_items || []).length > 0) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "3aea35f5-18af-5b44-b63a-dc90f61b3496",
+      "name": "Feed list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return $('Context').first().json.c.feed_items.map((f) => ({ json: f }));\n"
+      }
+    },
+    {
+      "id": "8330f6e6-0d44-5f5d-bbf3-a58b4f01df74",
+      "name": "Feed loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "ef8f409a-9231-51f4-bd7d-25b012adaa66",
+      "name": "AI input: feed block",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c;\nreturn { json: { route: 'digest.feed_block', vars: { brand_name: c.vars.brand_name, voice: c.vars.voice, language: c.vars.language, item: $json },\n  account_type: 'brand', brand_id: c.brand_id, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "784b61c5-ee33-5683-87d0-74352477b899",
+      "name": "AI: feed block",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "69087e11-600c-5915-9b0d-f032a882f3bd",
+      "name": "Feed block",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const f = $('Feed loop').first().json; const r = $json.result; return { json: { feed_item_id: f.feed_item_id, title: r.title, body: r.body, link_label: r.link_label, link_url: f.link } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "43cb2c1c-37ee-51e9-b9b9-75b59ecd991b",
+      "name": "AI input: compose",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        510
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c;\nconst feed = $('Feed loop').isExecuted ? $input.all().map((i) => i.json).filter((j) => j.feed_item_id) : [];\nconst blocks = [...c.variants, ...feed].map((b, index) => ({ index, ...b }));\nreturn [{ json: { route: 'digest.compose', account_type: 'brand', brand_id: c.brand_id, job_id: $('Job').first().json.id, _blocks: blocks,\n  vars: { brand_name: c.vars.brand_name, digest: c.vars.digest, voice: c.vars.voice, language: c.vars.language, period: c.vars.period,\n          blocks: blocks.map((b) => ({ index: b.index, title: b.title, body: b.body })) } } }];\n"
+      }
+    },
+    {
+      "id": "67926a08-5425-5473-ade4-e7fc404b49f6",
+      "name": "AI: compose",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        510
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "8616cb90-5d48-552b-b0fc-a2302b5bf3ba",
+      "name": "Render",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        510
+      ],
+      "parameters": {
+        "jsCode": "// Issue HTML from templates/email/digest.html (mustache subset). {{unsubscribe_url}} stays literal: SQL fills it per subscriber.\nconst c = $('Context').first().json.c;\nconst blocks = $('AI input: compose').first().json._blocks;\nconst comp = $input.first().json.result;\nconst esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst html = (s) => esc(s).replace(/\\n/g, '<br>');\nfunction render(tpl, ctx) {\n  tpl = tpl.replace(/\\{\\{([#^])(\\w+)\\}\\}([\\s\\S]*?)\\{\\{\\/\\2\\}\\}/g, (_, t, k, inner) => {\n    const v = ctx[k];\n    const empty = !v || (Array.isArray(v) && v.length === 0);\n    if (t === '^') return empty ? render(inner, ctx) : '';\n    if (Array.isArray(v)) return v.map((x) => render(inner, { ...ctx, ...x })).join('');\n    return empty ? '' : render(inner, ctx);\n  });\n  return tpl.replace(/\\{\\{\\{(\\w+)\\}\\}\\}/g, (_, k) => ctx[k] ?? '').replace(/\\{\\{(\\w+)\\}\\}/g, (_, k) => esc(ctx[k]));\n}\nconst order = [...new Set((comp.order || []).filter((i) => Number.isInteger(i) && i >= 0 && i < blocks.length))];\nblocks.forEach((_, i) => { if (!order.includes(i)) order.push(i); });\nconst ordered = order.map((i) => blocks[i]);\nconst d = c.vars.digest || {};\nconst cta = comp.cta || d.cta || null;\nconst out = render(c.template, {\n  language: c.vars.language || 'en', subject: comp.subject, preheader: comp.preheader, color: (c.palette || [])[0] || '#18181b',\n  digest_title: d.title || c.vars.brand_name, brand_name: c.vars.brand_name, period: c.vars.period, intro_html: html(comp.intro),\n  blocks: ordered.map((b) => ({ title: b.title, body_html: html(b.body), link_url: b.link_url, link_label: b.link_label || 'Read more',\n    image_url: b.image_asset_id ? `${c.web_url}/media/${b.image_asset_id}?t=${c.preview_token}` : null })),\n  cta_url: cta?.url || null, cta_text: cta?.text || null, footer_text: d.footer_text || '', blog_url: c.blog_url,\n  unsubscribe_url: '{{unsubscribe_url}}' });\nreturn [{ json: { compose: comp, items: ordered.map(({ index, ...b }) => b), html: out } }];\n"
+      }
+    },
+    {
+      "id": "4776d399-5318-50e2-8a86-b148360f671f",
+      "name": "Save",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2160,
+        510
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select digest_save($1, $2::jsonb, $3::jsonb, $4) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1, 2].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Context').first().json.c.issue_id, $json.compose, $json.items, $json.html ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI input: feed block": {
+      "main": [
+        [
+          {
+            "node": "AI: feed block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Skip?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Feed items?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feed items?": {
+      "main": [
+        [
+          {
+            "node": "Feed list",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI input: compose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feed list": {
+      "main": [
+        [
+          {
+            "node": "Feed loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feed loop": {
+      "main": [
+        [
+          {
+            "node": "AI input: compose",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI input: feed block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: feed block": {
+      "main": [
+        [
+          {
+            "node": "Feed block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feed block": {
+      "main": [
+        [
+          {
+            "node": "Feed loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI input: compose": {
+      "main": [
+        [
+          {
+            "node": "AI: compose",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: compose": {
+      "main": [
+        [
+          {
+            "node": "Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render": {
+      "main": [
+        [
+          {
+            "node": "Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

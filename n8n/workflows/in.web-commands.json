@@ -1,0 +1,162 @@
+{
+  "id": "acfWebCommands01",
+  "name": "IN · Web commands",
+  "nodes": [
+    {
+      "id": "79ba8c45-9a8c-5640-907c-889d51dcca37",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## IN · Web commands\n**Purpose**: the web service never writes business state itself; subscribe / confirm / unsubscribe / resubscribe / delete (DG-5, privacy) go through web_command().\n**Auth**: X-ACF-Secret (credential; the web service has the same secret in env).\n**Input**: {action, body}.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "b95019d6-aaf9-598d-8588-f46783a56d8f",
+      "name": "Command",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cmd",
+        "responseMode": "responseNode",
+        "options": {},
+        "authentication": "headerAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "acfCredWebCmd001",
+          "name": "Web command secret"
+        }
+      },
+      "webhookId": "6bc463c9-7008-5370-9dcb-d96b1d353fbe"
+    },
+    {
+      "id": "4bf5c3c6-7bad-5687-92b2-b315afcf4efe",
+      "name": "Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select web_command($1, $2::jsonb) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $json.body.action ?? null, $json.body.body ?? {} ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "46c205d6-9733-5111-b140-a7ccf4a742a5",
+      "name": "Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.r) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "24479b4c-7c98-5c41-935c-8508348df1d6",
+      "name": "Notify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfOutbox0000001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Command": {
+      "main": [
+        [
+          {
+            "node": "Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run": {
+      "main": [
+        [
+          {
+            "node": "Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply": {
+      "main": [
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": true,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

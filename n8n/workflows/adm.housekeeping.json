@@ -1,0 +1,142 @@
+{
+  "id": "acfHousekeep0001",
+  "name": "ADM · Housekeeping",
+  "nodes": [
+    {
+      "id": "89f54370-d0d2-5bbd-ae57-7120c7f96464",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## ADM · Housekeeping\n**Purpose**: privacy and cleanup: expired guest materials and temporary brands (with their S3 files), old sessions, tokens, sent outbox rows and processed inbound events.\n**Input**: housekeeping job (daily).",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "565737bb-638c-5f43-a2a3-329ab6f43c59",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "f3231331-3da1-5171-8ec7-4d0c705b5a23",
+      "name": "Clean",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select housekeeping() as r",
+        "options": {
+          "largeNumbersOutput": "numbers"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "e24ab49b-6e7c-5b4b-8b40-f7305a12a845",
+      "name": "Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return ($json.r.s3_keys || []).map((key) => ({ json: { key, bucket: $('Clean').first().json.r.bucket } }));\n"
+      }
+    },
+    {
+      "id": "ad721203-22fa-5f64-88f3-e4b32f6ccf81",
+      "name": "Delete file",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "delete",
+        "bucketName": "={{ $json.bucket }}",
+        "fileKey": "={{ $json.key }}",
+        "options": {}
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Clean",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean": {
+      "main": [
+        [
+          {
+            "node": "Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Files": {
+      "main": [
+        [
+          {
+            "node": "Delete file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

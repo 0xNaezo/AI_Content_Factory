@@ -1,0 +1,325 @@
+# Demo brand: bilingual boutique fitness studio (energetic, motivating, informal, emoji rich). Fictional business.
+# Spanish is the default language (Telegram ES, blog, digest, Instagram, Facebook); English serves the international
+# community (Telegram EN, LinkedIn, X). Language-specific required elements are bound to single-language platforms only.
+# Links use the reserved .example domain: replace with real URLs before the brand goes live.
+brand:
+  slug: marea-fitness
+  name: Marea Fitness Studio
+  timezone: Europe/Madrid
+  blog_domain: null
+  monthly_budget_usd: 50
+
+profile:
+  basics:
+    name: Marea Fitness Studio
+    description: >-
+      Marea is a boutique fitness studio two streets from the beach in Valencia's Cabanyal neighbourhood.
+      Small-group strength, HIIT, mobility and indoor rowing classes taught in Spanish, English or both, for
+      locals and the international community. Beginners are welcome in every class.
+    niche: Boutique fitness studio — small-group training classes (bilingual Spanish/English)
+    audience: >-
+      Adults aged 25–55 in Valencia — Spanish-speaking locals and English-speaking expats and remote workers —
+      who want structured, sociable training in small groups, from complete beginners to regulars.
+    languages: [es, en]
+    timezone: Europe/Madrid
+    website: "https://mareafitness.example"
+    topics:
+      - small-group strength training
+      - HIIT classes
+      - mobility and stretching
+      - indoor rowing
+      - beginner-friendly training
+      - training technique tips
+      - consistency and training habits
+      - class timetable and studio news
+      - outdoor beach sessions and studio events
+      - member stories and community
+    facts:
+      - "Address: Carrer de la Reina 45, El Cabanyal, València."
+      - "Opening hours: Monday to Friday 07:00–21:30, Saturday 09:00–14:00, Sunday closed."
+      - "Class types: Fuerza/Strength (50 min), HIIT (40 min), Movilidad/Mobility (45 min), Remo/Row (45 min)."
+      - "Maximum 12 people per class."
+      - "Classes are taught in Spanish, in English or bilingually; the timetable marks each class ES, EN or ES/EN."
+      - "Prices: single class €15; 10-class pass €120 (valid for 3 months); unlimited monthly membership €79."
+      - "Trial class for newcomers: €5."
+      - "Students and over-60s get 15% off memberships."
+      - "Coaches: Lucía (head coach, strength and rowing), Tomás (HIIT and mobility), Hannah (mobility, English-language classes)."
+      - "Bookings in the Marea app or at reception."
+      - "Showers, lockers and towels are included."
+      - "The studio has 8 rowing machines."
+      - "Cancel up to 6 hours before class without losing the session."
+      - "Beach Session: last Saturday of every month at 09:30 on Malvarrosa beach."
+      - "Opened in September 2022."
+  voice:
+    tone: energetic, motivating, warm, inclusive
+    style: >-
+      Short, punchy sentences with active verbs, speaking directly to the reader. Celebrate effort, consistency and
+      community — never appearance or weight. One clear call to action per post. In Spanish use tú; in English a
+      casual "you". Write times in 24-hour format (07:00, 18:30) and prices as €15 in both languages. Keep class
+      names as on the timetable: Fuerza, HIIT, Movilidad, Remo in Spanish; Strength, HIIT, Mobility, Row in English.
+    address: informal
+    emoji: rich
+    allowed_words: [entreno, constancia, comunidad, técnica, "¡vamos!", strong, crew, sweat, consistency, technique]
+    forbidden_words: [skinny, bikini body, fat-burning, fat burning, detox, miracle, no pain no gain, guaranteed results, quick fix, lose weight fast, quemagrasas, milagro, milagroso, operación bikini, adelgazar rápido, cuerpo perfecto, resultados garantizados]
+    allowed_topics:
+      - training technique
+      - consistency and habits
+      - studio news and events
+      - member milestones shared with permission
+      - active life in Valencia
+    forbidden_topics:
+      - weight-loss promises or before-and-after results
+      - "diets, supplements or nutrition plans"
+      - "medical diagnosis, injury treatment or rehab advice"
+      - body shaming or appearance-based motivation
+      - politics
+  required_elements:
+    cta:
+      phrases: [Reserva tu clase, Reserva tu primera clase, Book your class, Book your first class]
+      platforms: [telegram, instagram, facebook, linkedin]
+    links:
+      - label: Horario / Timetable
+        url: "https://mareafitness.example/horario"
+        utm:
+          source: "{platform}"
+          medium: social
+          campaign: "marea_{date}"
+        platforms: [telegram, facebook, linkedin, x]
+      - label: Horario
+        url: "https://mareafitness.example/horario"
+        utm:
+          source: blog
+          medium: content
+          campaign: "marea_{date}"
+        platforms: [blog]
+    hashtags:
+      required: ["#MareaFitness"]
+      pool: ["#ValenciaFitness", "#EntrenaEnValencia", "#Cabanyal", "#HIIT", "#Movilidad", "#IndoorRowing", "#FuerzaFuncional", "#StrongTogether", "#ComunidadMarea", "#TrainSmart"]
+      max: 6
+      platforms: [telegram, instagram, x]
+    disclaimers:
+      - text: "Consulta con un profesional de la salud antes de empezar un nuevo programa de ejercicio."
+        platforms: [blog, instagram]
+      - text: "Check with a health professional before starting a new exercise programme."
+        platforms: [linkedin]
+    signature:
+      text: "Marea Fitness Studio · València"
+      platforms: [telegram]
+  visual:
+    palette: ["#0077B6", "#00B4D8", "#FF6B35", "#F7F7F2", "#1B1B1E"]
+    image_style: >-
+      Bright, energetic photography of an empty boutique training studio and its gear: kettlebells, rowing machines,
+      mats and battle ropes in warm Mediterranean morning light through large windows; dynamic low angles, crisp
+      high-contrast colours, ocean-blue and coral accents, clean and airy.
+    logo: null
+    forbidden:
+      - "people, bodies, silhouettes or body parts"
+      - before-and-after imagery
+      - "scales, measuring tapes or food"
+      - "supplements, pills or shakers"
+      - text or numbers on walls or equipment
+      - mirrors with reflections
+  examples:
+    good:
+      - platform: telegram
+        text: |-
+          🔔 Semana de técnica en Fuerza
+
+          Esta semana bajamos el peso y subimos la calidad: sentadilla, peso muerto y press, repetición a repetición. Lucía y Tomás corrigen a cada persona, que para eso somos máximo 12 por clase. 💪
+
+          ¿Nunca has entrenado fuerza? Es la semana perfecta para empezar.
+
+          Reserva tu clase en la app o en recepción 🌊
+
+          Marea Fitness Studio · València
+          #MareaFitness #FuerzaFuncional
+      - platform: any
+        text: >-
+          Strong isn't a look. It's a habit. 💪 Show up, learn the technique, add a little weight when it feels right,
+          repeat. We'll handle the coaching — you bring the consistency.
+      - platform: instagram
+        text: |-
+          La constancia gana a la motivación. Siempre. 🌊
+
+          No hace falta que cada entreno sea épico. Hace falta que vengas. Dos clases a la semana, semana tras semana, construyen más que un mes a tope y luego nada. 💪🔥
+
+          Te esperamos en el Cabanyal. Reserva tu clase 👇
+
+          Consulta con un profesional de la salud antes de empezar un nuevo programa de ejercicio.
+
+          #MareaFitness #EntrenaEnValencia #ComunidadMarea
+      - platform: telegram
+        text: |-
+          🧘 Lunch-break Mobility, every Wednesday at 13:30
+
+          45 minutes with Hannah, in English, to undo a morning at the desk. Hips, shoulders, spine — all levels welcome, no flexibility required. ✨
+
+          Book your class in the app or at reception 💪
+
+          Marea Fitness Studio · València
+          #MareaFitness #Movilidad
+      - platform: facebook
+        text: >-
+          📅 ¿Te apetece probar? Tenemos clases de Fuerza, HIIT, Movilidad y Remo de lunes a sábado, en español, en
+          inglés o en los dos idiomas. Máximo 12 personas por clase, para que el coach te corrija de verdad. Reserva
+          tu primera clase y ven a conocernos. 🌊
+      - platform: linkedin
+        text: |-
+          Working remotely in Valencia is great — until you realise the only one you've talked to all week is your laptop.
+
+          At Marea, many of our English-speaking members came for the training and stayed for the people. Small groups (12 max), familiar faces at the same class every week, coaches who know your name and your squat.
+
+          If you've just moved here and want a routine that isn't another app, come and try a class. Book your first class — sessions run in English, Spanish or both.
+
+          Check with a health professional before starting a new exercise programme.
+      - platform: x
+        text: "40 minutes. 12 people max. One very good playlist. Thursday HIIT at Marea is where the week turns around. 🔥 #MareaFitness"
+      - platform: email
+        text: |-
+          Así es una primera clase en Marea
+
+          Llegas diez minutos antes, conoces al coach y repasáis juntos los movimientos antes de empezar. Nadie te pedirá que levantes más de lo que puedes: primero la técnica, después el peso. Somos máximo 12 por clase, así que siempre hay alguien pendiente de ti. Las toallas y las taquillas las ponemos nosotros; tú trae agua y ganas. Si tienes dudas, pregunta en recepción. 🌊
+      - platform: blog
+        text: |-
+          Qué llevar a tu primera clase de HIIT (y qué dejar en casa)
+
+          Tu primera clase de HIIT en Marea dura 40 minutos y se pasa volando. Para que solo tengas que preocuparte de moverte, aquí va la lista: zapatillas con buen agarre, ropa cómoda, una botella de agua y ganas. Las toallas, las taquillas y las duchas corren de nuestra cuenta. Lo que puedes dejar en casa: la idea de que tienes que estar en forma antes de venir.
+      - platform: any
+        text: >-
+          ¿Primera vez en Marea? Tranquilidad. El coach te explica cada ejercicio, adaptamos la intensidad a tu nivel y
+          nadie mira quién levanta más. Aquí se viene a entrenar y a pasarlo bien. 🌊💪
+    bad:
+      - text: "¡Quema grasa y consigue tu cuerpo perfecto para el verano! 🔥 Resultados garantizados."
+        why: "Appearance and weight-loss motivation (forbidden topics), forbidden words (cuerpo perfecto, resultados garantizados) and an invented guarantee."
+      - text: "Our HIIT class burns 1,000 calories and detoxes your body."
+        why: "Invented numbers and health claims plus the forbidden word 'detox'; we never make medical or calorie claims."
+      - text: "Class tomorrow. Book."
+        why: "Flat and cold: no energy, no detail, no reason to come — not the Marea voice."
+  platforms:
+    telegram:
+      notes: "2–4 short paragraphs; the day and time of the class or event in the first two lines. The signature goes right before the hashtags."
+      max_chars: null
+      image_aspect: null
+    blog:
+      notes: "A coach's voice, practical and encouraging; explain technique in plain words, no medical advice; end with an invitation to a trial class, then the disclaimer."
+      max_chars: null
+      image_aspect: null
+    email:
+      notes: null
+      max_chars: null
+      image_aspect: null
+    linkedin:
+      notes: "Community, remote-work and team-wellbeing angle for Valencia's international professionals; no hashtags."
+      max_chars: null
+      image_aspect: null
+    instagram:
+      notes: "Hook in the first line, 2–3 short paragraphs, the disclaimer on its own line before the hashtags."
+      max_chars: null
+      image_aspect: null
+    facebook:
+      notes: null
+      max_chars: null
+      image_aspect: null
+    x:
+      notes: "One or two posts; at most 2 hashtags."
+      max_chars: null
+      image_aspect: null
+  digest:
+    title: La Marea Semanal
+    intro_style: "Two or three energetic, friendly sentences in the tú form that get readers excited to plan their training week; celebrate effort, never appearance."
+    footer_text: "Marea Fitness Studio · Carrer de la Reina 45, El Cabanyal, València · L–V 07:00–21:30, S 09:00–14:00. Consulta con un profesional de la salud antes de empezar un nuevo programa de ejercicio. Recibes este correo porque te suscribiste en nuestro blog."
+    cta:
+      text: Reserva tu clase
+      url: "https://mareafitness.example/horario"
+
+platforms:
+  - platform: telegram
+    language: es
+    mode: real
+    active: true
+    auto_publish: false
+    target: {chat_id: "@marea_fitness_es_demo"}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5], times: ["07:30", "19:00"]}
+        - {days: [6], times: ["09:30"]}
+      max_per_day: 2
+      min_interval_minutes: 300
+  - platform: telegram
+    language: en
+    mode: real
+    active: true
+    auto_publish: false
+    target: {chat_id: "@marea_fitness_en_demo"}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5], times: ["08:30"]}
+        - {days: [6], times: ["10:00"]}
+      max_per_day: 1
+      min_interval_minutes: 720
+  - platform: blog
+    language: es
+    mode: real
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 4], times: ["10:00"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: email
+    language: es
+    mode: real
+    active: true
+    auto_publish: false
+    target: {from_name: Marea Fitness Studio}
+    schedule: {frequency: weekly, day: 7, time: "18:00", auto_send: false}
+  - platform: linkedin
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [2, 4], times: ["09:00"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: instagram
+    language: es
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5, 6, 7], times: ["19:30"]}
+      max_per_day: 1
+      min_interval_minutes: 720
+  - platform: facebook
+    language: es
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 3, 5], times: ["13:00"]}
+      max_per_day: 1
+      min_interval_minutes: 720
+  - platform: x
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5], times: ["07:15", "17:30"]}
+      max_per_day: 2
+      min_interval_minutes: 240
+
+feeds:
+  - https://www.vitonica.com/index.xml
+  - https://blog.nasm.org/rss.xml

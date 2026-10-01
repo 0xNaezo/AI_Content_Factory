@@ -1,0 +1,231 @@
+{
+  "id": "acfGenerate00001",
+  "name": "PIPE · Generate",
+  "nodes": [
+    {
+      "id": "876b8d12-447a-5207-880d-60241d91303c",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## PIPE · Generate\n**Purpose**: write / redo (editor comment) / fix (failed checks) one variant for its platform in the brand voice (GN-1, GN-2, GN-4, GN-6). Structured output per platform kind (post, thread, article, email block) with 3 headline options, used facts with source quotes, uncertain claims and an image brief.\n**Input**: job {variant_id, payload.mode, payload.comment}.\n**AI**: gen.variant / fix.variant (brand budget).",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "c5288267-42f4-5717-acb2-38c9d9684b5d",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "be66c6c2-7be5-584c-92e9-9fd70c2abb64",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select gen_context($1, $2, $3) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.variant_id, $json.payload.mode ?? 'generate', $json.payload.comment ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "29eff458-8f11-5fc3-9348-52e7ad28fbf7",
+      "name": "Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd9b8f2d-2a99-5986-93ab-37936d3ed7eb",
+              "leftValue": "={{ !!($json.c.skip) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "69445740-50cc-5f0a-9a9a-9254993c67b3",
+      "name": "AI input: generate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const c = $json.c; return { json: { route: c.route, schema_name: c.schema_name, vars: c.vars, account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: c.material_id ?? null, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "27ed0a78-62fe-5819-bb2f-621f176884d2",
+      "name": "AI: generate",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "4ce8e52e-288e-5c47-be61-03b2f149c80f",
+      "name": "Save",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select save_generated($1, $2, $3::jsonb, $4) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [2].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.variant_id, $('Job').first().json.payload.mode ?? 'generate', $json.result, $('Job').first().json.payload.comment ?? null ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI input: generate": {
+      "main": [
+        [
+          {
+            "node": "AI: generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Skip?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "AI input: generate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: generate": {
+      "main": [
+        [
+          {
+            "node": "Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

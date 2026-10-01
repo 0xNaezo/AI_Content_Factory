@@ -1,0 +1,51 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "subject",
+    "preheader",
+    "intro",
+    "order",
+    "cta"
+  ],
+  "properties": {
+    "subject": {
+      "type": "string",
+      "description": "Email subject, up to 70 characters"
+    },
+    "preheader": {
+      "type": "string",
+      "description": "Preview text, up to 110 characters"
+    },
+    "intro": {
+      "type": "string",
+      "description": "2-4 sentence introduction in the brand voice"
+    },
+    "order": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "Block indexes (0-based, as given) in the best reading order"
+    },
+    "cta": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "url"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,333 @@
+{
+  "id": "acfJobRunner0001",
+  "name": "CORE · Job runner",
+  "nodes": [
+    {
+      "id": "003f93f6-e5dd-5d08-a2d0-c64c6dcead24",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## CORE · Job runner\n**Purpose**: run one claimed job in its handler workflow (job_types.workflow_id) and record the outcome.\n**Input**: a claim_jobs row (id, type, workflow_id, payload, material_id, package_id, variant_id, brand_id, attempts).\n**Output**: none.\n**Side effects**: job_done / job_failed (error codes: budget_exceeded -> blocked, fatal -> dead, other -> retry with backoff); then the fast path: dispatcher / notify / publisher when there is work.\n**TZ**: architecture 4.2, 8.1.",
+        "height": 192,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "903ef955-94e2-52e8-82ff-42f65d53b70e",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "52c85bbc-ae83-5489-9f96-b7793d1c7ab6",
+      "name": "Run handler",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $json.workflow_id }}",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueErrorOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "3237f942-55e7-50fd-ac3f-8db245a651fa",
+      "name": "Done",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select job_done($1, null) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "48b1cdce-3e99-5b96-9db8-c1fcd041652e",
+      "name": "Failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        480,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select job_failed($1, $2) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.id, String($json.error?.message ?? $json.error ?? $json.message ?? 'handler failed').slice(0, 2000) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "9586dc81-f8f2-58b1-8b2c-207f86f944b2",
+      "name": "Fast path",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const f = $input.first().json.flags || {};\nreturn ['dispatch', 'outbox', 'publish'].filter((k) => f[k]).map((k) => ({ json: { k } }));\n"
+      }
+    },
+    {
+      "id": "6c77a35a-0c8d-5b5c-81e6-652801199f91",
+      "name": "Which",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ ['dispatch', 'outbox', 'publish'].indexOf($json.k) }}"
+      }
+    },
+    {
+      "id": "da863804-00c6-55ca-acde-2f7a17e680b5",
+      "name": "Dispatcher",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        -170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfDispatcher001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "3ad20b6a-a8c5-5cf3-9248-62e0cff02950",
+      "name": "Notify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfOutbox0000001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "a23b28c8-a251-55a4-910c-02f837498cad",
+      "name": "Publisher",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfPublisher0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Run handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run handler": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Done": {
+      "main": [
+        [
+          {
+            "node": "Fast path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failed": {
+      "main": [
+        [
+          {
+            "node": "Fast path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fast path": {
+      "main": [
+        [
+          {
+            "node": "Which",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which": {
+      "main": [
+        [
+          {
+            "node": "Dispatcher",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Publisher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

@@ -1,0 +1,273 @@
+{
+  "id": "acfRoute00000001",
+  "name": "PIPE · Route",
+  "nodes": [
+    {
+      "id": "304f1532-0c22-5732-8b06-27c59cf3a856",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## PIPE · Route\n**Purpose**: brand detection (RT-1…RT-4): explicit hint -> single brand -> classifier over the author's brands only (isolation); low confidence or off-topic -> question to the author.\n**Input**: job {material_id}.\n**AI**: route.classify.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "cf32d44b-f0b9-5f67-bc76-3964b74c3fa0",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "2d1592ad-9538-5ea9-a44f-a86ad177ac6c",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select route_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.material_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "9acc61bd-1d31-53f2-8fda-520b2fee2dc7",
+      "name": "Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 4,
+        "output": "={{ $json.c.skip ? 0 : $json.c.decided ? 1 : $json.c.reject ? 2 : 3 }}"
+      }
+    },
+    {
+      "id": "a06d6b5d-95b3-5f2b-be48-52cb06e01288",
+      "name": "Apply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select route_apply($1, (select array_agg(x::bigint) from jsonb_array_elements_text($2::jsonb) x), $3) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.material_id, $json.c.decided, $json.c.method ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "71203aef-bbed-56f2-aceb-582283e15b31",
+      "name": "Reject",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select material_reject($1, $2)",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.material_id, $json.c.reject ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "3d1bdbd2-5ade-5610-bed0-8de23c5dcaf9",
+      "name": "AI input: classify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const c = $json.c; return { json: { route: 'route.classify', vars: c.vars, account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: $('Job').first().json.material_id, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "21959f36-9cec-5a53-92cc-8357bdf2eed6",
+      "name": "AI: classify",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        340
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "705ab6d3-c924-59a6-972f-eb7114b00d9a",
+      "name": "Decide",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select route_decide($1, $2::jsonb) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.material_id, $json.result ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI input: classify": {
+      "main": [
+        [
+          {
+            "node": "AI: classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Apply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI input: classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: classify": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "id": "acfDispatcher001",
+  "name": "CORE · Dispatcher",
+  "nodes": [
+    {
+      "id": "49b4c087-edf2-59b3-8337-4af0f8af9883",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## CORE · Dispatcher\n**Purpose**: claim ready jobs (leases, per-type and global concurrency, recovery of expired leases) and start one Job runner per job.\n**Trigger**: every 10 s + direct call (fast path from Job runner, webhooks, cron).\n**Output**: none; runners run detached.\n**Side effects**: jobs -> running (claim_jobs).\n**TZ**: section 8 (resume after failure), architecture 4.2.",
+        "height": 192,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "52aea1c4-3ae9-5547-a21a-33184a2147df",
+      "name": "Every 10 s",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 10
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cb6a2d65-8923-5909-8504-cb05fd852f33",
+      "name": "Fast path",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        170
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "2c44fb21-8cc6-54d7-93ca-06182941ee13",
+      "name": "Claim jobs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from claim_jobs(20)",
+        "options": {
+          "largeNumbersOutput": "numbers"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "cd1ba132-4408-5e28-8e43-8201de6c75e9",
+      "name": "Each job",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "5babc444-52bb-5af8-ab3f-817b8849e806",
+      "name": "Start runner",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfJobRunner0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 10 s": {
+      "main": [
+        [
+          {
+            "node": "Claim jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fast path": {
+      "main": [
+        [
+          {
+            "node": "Claim jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim jobs": {
+      "main": [
+        [
+          {
+            "node": "Each job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Each job": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Start runner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start runner": {
+      "main": [
+        [
+          {
+            "node": "Each job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1",
+    "saveDataSuccessExecution": "none"
+  },
+  "active": true,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

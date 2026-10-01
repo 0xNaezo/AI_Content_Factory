@@ -1,0 +1,44 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ranking",
+    "off_topic",
+    "reason"
+  ],
+  "properties": {
+    "ranking": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "brand",
+          "confidence",
+          "reason"
+        ],
+        "properties": {
+          "brand": {
+            "type": "string",
+            "description": "Brand slug from the candidate list"
+          },
+          "confidence": {
+            "type": "number",
+            "description": "0..1"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "All candidate brands ordered by fit"
+    },
+    "off_topic": {
+      "type": "boolean",
+      "description": "true if the material fits none of the brands"
+    },
+    "reason": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "id": "acfSqlJob0000001",
+  "name": "CORE · SQL job",
+  "nodes": [
+    {
+      "id": "2edbfe45-3895-5eb2-8975-5f67d12f1c95",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## CORE · SQL job\n**Purpose**: handler for job types that are pure database logic (tg.update, seal, cards, deadlines, digest plan/deadline, weekly report, eval finalize).\n**Input**: job row.\n**Output**: job flags.\n**Side effects**: whatever run_sql_job() does (all in one transaction).",
+        "height": 170,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "e0307b3d-be5c-5dba-8f6c-7e06d3a5156b",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "4309272e-fe0d-5eae-a58a-5b86681f6cc8",
+      "name": "Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select run_sql_job($1) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

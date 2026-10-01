@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "text",
+    "headline_options",
+    "image_brief",
+    "used_facts",
+    "uncertain"
+  ],
+  "properties": {
+    "text": {
+      "type": "string",
+      "description": "The post text, plain text without markdown or HTML"
+    },
+    "headline_options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Exactly 3 alternative first lines / headlines (GN-4)"
+    },
+    "image_brief": {
+      "type": "string",
+      "description": "Visual brief for an illustration of this post: subject, setting, mood, composition. No people, no text, no logos."
+    },
+    "used_facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim",
+          "source_quote"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "description": "A factual statement used in the text"
+          },
+          "source_quote": {
+            "type": "string",
+            "description": "Exact quote from the source or brand facts that supports it"
+          }
+        }
+      },
+      "description": "Every fact, number, date, price, name or promise used in the text, with its support"
+    },
+    "uncertain": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Places the editor should double-check (ambiguous or weakly supported statements)"
+    }
+  }
+}

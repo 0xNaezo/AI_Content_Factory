@@ -1,1 +1,5 @@
 .env
+node_modules/
+.next/
+backups/
+.e2e-api-settings.json

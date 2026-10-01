@@ -1,0 +1,200 @@
+{
+  "id": "acfTgFile0000001",
+  "name": "CORE · Tg file",
+  "nodes": [
+    {
+      "id": "229d39fe-59db-578f-86f4-6dbb37acfe26",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## CORE · Tg file\n**Purpose**: download a Telegram file (getFile + file download through the egress proxy) and store it in S3.\n**Input**: {tg_file_id, s3_key, bucket, telegram_base, telegram_file_base}.\n**Output**: {s3_key, sha256, bytes, mime} + binary \"data\".\n**Limits**: the Bot API serves files up to 20 MB (IN-2 is checked before download).",
+        "height": 170,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "ea5ee071-34c8-56d9-9abb-10b8fde73cd7",
+      "name": "Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "2f762442-f9ef-5a12-b2fa-93a5d0a3809f",
+      "name": "Get file info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.telegram_base }}/getFile",
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ file_id: $json.tg_file_id }) }}"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "990de1c2-3b4e-5f9b-a46e-303cca98df06",
+      "name": "Download",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Input').first().json.telegram_file_base }}/{{ $json.result.file_path }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "a1146e61-9dfc-5385-80b3-aed78e47b8e0",
+      "name": "Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst input = $('Input').first().json;\nconst buf = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst bin = $input.first().binary.data;\nreturn [{ json: { s3_key: input.s3_key, bucket: input.bucket, sha256: crypto.createHash('sha256').update(buf).digest('hex'),\n                  bytes: buf.length, mime: input.mime || bin.mimeType || 'application/octet-stream' }, binary: $input.first().binary }];\n"
+      }
+    },
+    {
+      "id": "fc62b31f-aef7-587d-88fb-9f3900b0bca6",
+      "name": "Upload",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "bucketName": "={{ $json.bucket }}",
+        "fileName": "={{ $json.s3_key }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "cddb47b0-9dec-5ddb-9560-864183c3d94b",
+      "name": "Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: $('Hash').first().json, binary: $('Hash').first().binary }];\n"
+      }
+    }
+  ],
+  "connections": {
+    "Input": {
+      "main": [
+        [
+          {
+            "node": "Get file info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get file info": {
+      "main": [
+        [
+          {
+            "node": "Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download": {
+      "main": [
+        [
+          {
+            "node": "Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hash": {
+      "main": [
+        [
+          {
+            "node": "Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

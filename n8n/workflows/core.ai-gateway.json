@@ -1,0 +1,612 @@
+{
+  "id": "acfAiGateway0001",
+  "name": "CORE · AI gateway",
+  "nodes": [
+    {
+      "id": "0c33212e-6341-5f04-af54-4aba2cd315f5",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## CORE · AI gateway\n**Purpose**: the only place that calls AI providers (architecture 8.1): route -> model/params/prompt/schema, budget check BEFORE the call (blocked calls never reach the provider, AD-4), request building (prompt caching, structured outputs, PDF/image blocks), response validation, usage and cost for every call (GN-8, tracing).\n**Input**: {route, account_type, brand_id?, material_id?, package_id?, variant_id?, job_id?, vars?, schema_name?, attachments?: [{kind, s3_key, mime}], input? (embedding), prompt?/aspect_ratio? (image)}.\n**Output**: {result, cost_usd}. Errors: budget_exceeded:… / provider_unavailable:… / fatal:… (the job runner maps them).\n**Providers**: Anthropic Messages API (text, vision, PDF), OpenRouter (speech-to-text, images, embeddings).",
+        "height": 170,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "aa1fd555-b444-5211-b1cd-7cef6cff7e04",
+      "name": "Input",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "a30430d5-f5a5-59b2-9bf2-30123ddfcc97",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select ai_prepare($1, $2, $3, $4) as p",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.route, $json.account_type ?? 'system', $json.brand_id ?? null, $json.schema_name ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "6bde85f6-b289-5ffc-ae69-26ad13637eaa",
+      "name": "Blocked?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cb4188fc-663b-52cb-b910-ddf688bd4e66",
+              "leftValue": "={{ !!($json.p.blocked) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "e38fdd40-9cde-5600-bcb5-b2f0642be72f",
+      "name": "Record blocked",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        720,
+        -170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select ai_record($1::jsonb) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [0].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ { route: $('Input').first().json.route, provider: '-', model: '-', status: 'budget', error: $json.p.error, account_type: $('Input').first().json.account_type ?? 'system', brand_id: $('Input').first().json.brand_id ?? null, material_id: $('Input').first().json.material_id ?? null, job_id: $('Input').first().json.job_id ?? null } ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "86b0e6dd-0c97-577d-9475-180f21a62b39",
+      "name": "Budget stop",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        960,
+        -170
+      ],
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ $('Prepare').first().json.p.error }}"
+      }
+    },
+    {
+      "id": "c18ca80d-aded-5f84-9460-dcdfff505376",
+      "name": "Files?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a9e090a2-70a4-5d90-9efa-3e7cca385952",
+              "leftValue": "={{ !!(($('Input').first().json.attachments || []).length > 0) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "2e82f87c-90cf-5415-a8cb-ffe37e6a0ccc",
+      "name": "Split files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return ($('Input').first().json.attachments || []).map((a) => ({ json: { ...a, bucket: $('Prepare').first().json.p.bucket } }));\n"
+      }
+    },
+    {
+      "id": "c938d325-18e9-574f-b508-2c6a6a370d36",
+      "name": "Get file",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "bucketName": "={{ $json.bucket }}",
+        "fileKey": "={{ $json.s3_key }}",
+        "binaryPropertyName": "data"
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "077eede3-5098-5a8a-a460-ba460eeac052",
+      "name": "Build request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        170
+      ],
+      "parameters": {
+        "jsCode": "// Provider request from the route config (ai_prepare), the prompt template and the caller's vars / files.\nconst input = $('Input').first().json;\nconst p = $('Prepare').first().json.p;\nconst params = p.params || {};\nconst files = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  if (items[i].binary && items[i].binary.data) {\n    const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n    files.push({ kind: items[i].json.kind, mime: items[i].json.mime || items[i].binary.data.mimeType, b64: buf.toString('base64') });\n  }\n}\n\n// Structured outputs accept a JSON Schema subset: drop validation-only keywords, inline $refs, close every object.\nfunction strict(schema) {\n  const defs = schema.$defs || schema.definitions || {};\n  const drop = new Set(['$schema', '$id', '$defs', 'definitions', 'minLength', 'maxLength', 'minimum', 'maximum', 'exclusiveMinimum',\n    'exclusiveMaximum', 'multipleOf', 'minItems', 'maxItems', 'uniqueItems', 'pattern', 'format', 'default', 'examples', 'title']);\n  const walk = (s) => {\n    if (Array.isArray(s)) return s.map(walk);\n    if (!s || typeof s !== 'object') return s;\n    if (s.$ref) return walk(defs[s.$ref.split('/').pop()] || {});\n    const out = {};\n    for (const [k, v] of Object.entries(s)) {\n      if (drop.has(k)) continue;\n      out[k] = k === 'properties' ? Object.fromEntries(Object.entries(v).map(([pk, pv]) => [pk, walk(pv)])) : walk(v);\n    }\n    if (out.properties) {\n      out.additionalProperties = false;\n      out.required = Object.keys(out.properties);\n    }\n    return out;\n  };\n  return walk(schema);\n}\n\n// Prompt template: <<<system>>> (stable rules), <<<cache>>> (stable brand block, cached), <<<user>>> (volatile). {{var}} / {{a.b}} from vars.\nfunction render(t) {\n  return t.replace(/\\{\\{\\s*([\\w.]+)\\s*\\}\\}/g, (_, k) => {\n    const v = k.split('.').reduce((o, x) => (o == null ? undefined : o[x]), input.vars || {});\n    return v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v, null, 1);\n  });\n}\n\nlet url, body, headers = {};\nif (p.provider === 'anthropic') {\n  const sec = { system: '', cache: '', user: '' };\n  let cur = 'user';\n  for (const line of String(p.template || '').split('\\n')) {\n    const m = line.match(/^<<<(system|cache|user)>>>\\s*$/);\n    if (m) { cur = m[1]; continue; }\n    sec[cur] += line + '\\n';\n  }\n  const system = [];\n  if (sec.system.trim()) system.push({ type: 'text', text: render(sec.system).trim() });\n  if (sec.cache.trim()) system.push({ type: 'text', text: render(sec.cache).trim(), cache_control: { type: 'ephemeral' } });\n  const content = files.map((f) => f.mime === 'application/pdf'\n    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: f.b64 } }\n    : { type: 'image', source: { type: 'base64', media_type: f.mime, data: f.b64 } });\n  content.push({ type: 'text', text: render(sec.user).trim() || 'Go.' });\n  body = { model: p.model, max_tokens: params.max_tokens || 8000, messages: [{ role: 'user', content }], fallbacks: 'default' };\n  if (system.length) body.system = system;\n  const oc = {};\n  if (params.effort) oc.effort = params.effort;\n  if (p.schema) oc.format = { type: 'json_schema', schema: strict(p.schema) };\n  if (Object.keys(oc).length) body.output_config = oc;\n  url = p.base_url + '/v1/messages';\n  headers = { 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01' };\n} else if (p.kind === 'stt') {\n  const f = files[0];\n  if (!f) throw new Error('fatal: no audio file for speech-to-text');\n  const ext = { 'audio/ogg': 'ogg', 'audio/opus': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a',\n                'audio/m4a': 'm4a', 'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/flac': 'flac', 'audio/aac': 'aac', 'audio/webm': 'webm' }[f.mime] || 'ogg';\n  url = p.base_url + '/audio/transcriptions';\n  body = { model: p.model, input_audio: { data: f.b64, format: ext } };\n} else if (p.kind === 'image') {\n  url = p.base_url + '/images';\n  body = { model: p.model, prompt: String(input.prompt || '').slice(0, 4000), aspect_ratio: input.aspect_ratio || '16:9', ...params };\n} else {\n  url = p.base_url + '/embeddings';\n  const clip = (t) => String(t ?? '').slice(0, 30000);\n  body = { model: p.model, input: Array.isArray(input.input) ? input.input.map(clip) : clip(input.input), dimensions: params.dimensions || 1536 };\n}\nreturn [{ json: { provider: p.provider, url, body, headers, started: Date.now() } }];\n"
+      }
+    },
+    {
+      "id": "cfb28b9d-9b31-5088-b8d6-8d9b19bad497",
+      "name": "Provider",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1680,
+        170
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $json.provider === 'anthropic' ? 0 : 1 }}"
+      }
+    },
+    {
+      "id": "d1d0f737-a27e-57c1-bc55-05655f9f530a",
+      "name": "Call Anthropic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 600000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "anthropic-beta",
+              "value": "server-side-fallback-2026-07-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "credentials": {
+        "anthropicApi": {
+          "id": "acfCredAnthropic",
+          "name": "Anthropic API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "6e4d0128-d531-5958-a6b5-0ed3235e8549",
+      "name": "Call OpenRouter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        340
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "credentials": {
+        "openRouterApi": {
+          "id": "acfCredOpenRoutr",
+          "name": "OpenRouter API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "ceef535b-d2a6-5cb5-9ef4-bc9ea8b5517e",
+      "name": "Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        170
+      ],
+      "parameters": {
+        "jsCode": "// Classify the provider answer: ok / retryable (provider_unavailable) / permanent (fatal), usage for ai_record.\nconst req = $('Build request').first().json;\nconst input = $('Input').first().json;\nconst p = $('Prepare').first().json.p;\nconst r = $json;\nconst code = r.statusCode || 0;\nconst b = r.body;\nconst msg = () => (b && typeof b === 'object' ? (b.error?.message || b.message || JSON.stringify(b).slice(0, 300)) : String(b || '').slice(0, 300));\nconst rec = { route: input.route, provider: p.provider, model: p.model, prompt_hash: p.prompt_hash, account_type: input.account_type || 'system',\n  brand_id: input.brand_id ?? null, material_id: input.material_id ?? null, package_id: input.package_id ?? null,\n  variant_id: input.variant_id ?? null, job_id: input.job_id ?? null, latency_ms: Date.now() - req.started, status: 'error' };\nlet ok = false, result = null, err = null;\nif (r.error || !code) err = 'provider_unavailable: ' + String(r.error?.message || r.error || 'no response').slice(0, 300);\nelse if (code === 429 || code >= 500) err = `provider_unavailable: HTTP ${code} ${msg()}`;\nelse if (code === 401 || code === 403) err = `fatal: HTTP ${code} — check the ${p.provider} API key in n8n credentials`;\nelse if (code >= 400) err = `fatal: HTTP ${code} ${msg()}`;\nelse if (p.provider === 'anthropic') {\n  const u = b.usage || {};\n  Object.assign(rec, { input_tokens: u.input_tokens || 0, output_tokens: u.output_tokens || 0, cache_write_tokens: u.cache_creation_input_tokens || 0,\n                       cache_read_tokens: u.cache_read_input_tokens || 0, stop_reason: b.stop_reason, model: b.model || p.model });\n  const text = (b.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');\n  if (b.stop_reason === 'refusal') { rec.status = 'refused'; err = 'fatal: the model declined this request'; }\n  else if (b.stop_reason === 'max_tokens') { rec.status = 'invalid'; err = 'fatal: the answer was cut at max_tokens'; }\n  else if (p.schema) {\n    try { result = JSON.parse(text); ok = true; } catch (e) { rec.status = 'invalid'; err = 'invalid JSON from the model: ' + e.message; }\n  } else { result = text; ok = text.trim() !== ''; if (!ok) { rec.status = 'invalid'; err = 'empty answer from the model'; } }\n} else {\n  rec.cost_usd = b?.usage?.cost ?? null;\n  if (p.kind === 'stt') { result = typeof b.text === 'string' ? b.text : null; rec.units = { seconds: b?.usage?.seconds ?? null }; }\n  else if (p.kind === 'image') {\n    const d = (b.data || [])[0] || {};\n    let b64 = d.b64_json || null;\n    if (!b64 && typeof d.url === 'string' && d.url.startsWith('data:')) b64 = d.url.split(',')[1];\n    result = b64 ? { image_b64: b64, mime: (d.url || '').match(/^data:([^;]+)/)?.[1] || 'image/png' } : null;\n    rec.units = { images: 1 };\n  } else {  // embeddings: one vector for a string input, a list (in input order) for an array input\n    const vecs = (b.data || []).slice().sort((x, y) => (x.index ?? 0) - (y.index ?? 0)).map((x) => x.embedding);\n    result = Array.isArray(input.input) ? (vecs.length === input.input.length ? vecs : null) : (vecs[0] || null);\n  }\n  ok = result != null;\n  if (!ok) { rec.status = 'invalid'; err = `invalid response from ${p.provider} (${p.kind})`; }\n}\nif (ok) rec.status = 'ok';\nrec.error = err;\nreturn { json: { ok, result, error: err, record: rec } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "229089e1-510e-5d47-882c-4ac525ac25a6",
+      "name": "Record",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2400,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select ai_record($1::jsonb) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [0].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $json.record ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "98d5b6c6-9a7d-5f9c-8254-bb505079f39c",
+      "name": "OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "56d34bdf-26f8-56b8-b9ca-2d223d537b1b",
+              "leftValue": "={{ !!($('Parse').first().json.ok) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "21278177-0073-55eb-a999-2d6b940700ec",
+      "name": "Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { result: $('Parse').first().json.result, cost_usd: $json.r.cost_usd } }];\n"
+      }
+    },
+    {
+      "id": "08fac53b-7074-51f0-bfb3-e8e62d8228ae",
+      "name": "Fail",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2880,
+        340
+      ],
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "={{ $('Parse').first().json.error }}"
+      }
+    }
+  ],
+  "connections": {
+    "Input": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Blocked?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Blocked?": {
+      "main": [
+        [
+          {
+            "node": "Record blocked",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Files?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record blocked": {
+      "main": [
+        [
+          {
+            "node": "Budget stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Files?": {
+      "main": [
+        [
+          {
+            "node": "Split files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split files": {
+      "main": [
+        [
+          {
+            "node": "Get file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get file": {
+      "main": [
+        [
+          {
+            "node": "Build request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build request": {
+      "main": [
+        [
+          {
+            "node": "Provider",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Provider": {
+      "main": [
+        [
+          {
+            "node": "Call Anthropic",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call OpenRouter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Anthropic": {
+      "main": [
+        [
+          {
+            "node": "Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenRouter": {
+      "main": [
+        [
+          {
+            "node": "Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse": {
+      "main": [
+        [
+          {
+            "node": "Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record": {
+      "main": [
+        [
+          {
+            "node": "OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OK?": {
+      "main": [
+        [
+          {
+            "node": "Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

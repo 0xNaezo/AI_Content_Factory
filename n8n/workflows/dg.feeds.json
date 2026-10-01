@@ -1,0 +1,484 @@
+{
+  "id": "acfFeeds00000001",
+  "name": "DG · Feeds",
+  "nodes": [
+    {
+      "id": "b6dd8e38-0aeb-5a9a-8b94-8ba8a10333db",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## DG · Feeds\n**Purpose**: read the brand RSS sources (DG-2), keep new items with relevance = cosine similarity between the item and the brand description embeddings; the digest builder takes the most relevant unused ones.\n**Input**: job {brand_id}.\n**AI**: embed (brand budget).",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "a1a8dbde-713f-5e35-a7d7-bad6ee6fff4e",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "7c48d684-f16a-53ae-8060-73c3d86e97b1",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select feeds_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.brand_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "c1aae18c-1e1c-51e8-bc47-76e589812bb8",
+      "name": "Sources?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3ad72df5-1395-50e4-9d50-9d30c9e464ee",
+              "leftValue": "={{ !!(($json.c.sources || []).length > 0 && $json.c.brand_text) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "1e1f431d-8001-5cf1-8445-80e7b8dbbec8",
+      "name": "AI input: brand vector",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const c = $json.c; return { json: { route: 'embed', input: c.brand_text, account_type: 'brand', brand_id: c.brand_id, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "8fb6b731-2b04-516f-9c3b-ffef7f24cb49",
+      "name": "AI: brand vector",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "a765a9c4-8df5-545f-b600-24f0005aebfe",
+      "name": "Source list",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "jsCode": "return $('Context').first().json.c.sources.map((s) => ({ json: s }));\n"
+      }
+    },
+    {
+      "id": "3aea952f-de81-5df6-82cc-a0a112786721",
+      "name": "Source loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1440,
+        170
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "6098cff1-56e3-591c-80a5-b028c37dcb6d",
+      "name": "Read feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        340
+      ],
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "1c2baf65-eecb-5efc-8106-703f0531ee52",
+      "name": "Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const src = $('Source loop').first().json;\nconst all = $input.all().map((i) => i.json);\nconst error = all.length && all[0].error ? String(all[0].error.message ?? all[0].error).slice(0, 300) : null;\nconst items = error ? [] : all.filter((i) => i.title || i.link).sort((a, b) => String(b.isoDate || '').localeCompare(String(a.isoDate || ''))).slice(0, 20)\n  .map((i) => ({ guid: i.guid || i.id || i.link, title: i.title || '', link: i.link || null,\n                 summary: String(i.contentSnippet || i.content || i.summary || '').slice(0, 3000), published_at: i.isoDate || null }));\nreturn [{ json: { source_id: src.id, items, error } }];\n"
+      }
+    },
+    {
+      "id": "851917ea-226a-571a-aca7-552053be049b",
+      "name": "New items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        340
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "da19e67d-4021-5fc4-86c2-8e75d5c4febd",
+              "leftValue": "={{ !!($json.items.length > 0) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "27fd1275-a184-5b9c-b4b1-2d93919055f4",
+      "name": "AI input: item vectors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c; return { json: { route: 'embed', input: $json.items.map((i) => i.title + '. ' + i.summary), account_type: 'brand', brand_id: c.brand_id, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "44a30b45-511f-5e06-bed0-2b09e322335e",
+      "name": "AI: item vectors",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "2ed8b265-d6df-5bff-837e-9ed8b140f535",
+      "name": "Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const brand = $('AI: brand vector').first().json.result;\nconst got = $('Items').first().json;\nconst vecs = $input.first().json.result;\nconst cos = (a, b) => { let d = 0, x = 0, y = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; x += a[i] * a[i]; y += b[i] * b[i]; } return d / (Math.sqrt(x * y) || 1); };\nreturn [{ json: { source_id: got.source_id, error: null, items: got.items.map((it, i) => ({ ...it,\n  embedding: Array.isArray(vecs?.[i]) ? JSON.stringify(vecs[i]) : null, relevance: Array.isArray(vecs?.[i]) ? Number(cos(brand, vecs[i]).toFixed(4)) : null })) } }];\n"
+      }
+    },
+    {
+      "id": "e27d068c-13fb-5b40-ac63-8d683bd5c043",
+      "name": "Save items",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3120,
+        340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select feed_items_save($1, $2::jsonb, $3) as saved",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $json.source_id, $json.items, $json.error ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI input: brand vector": {
+      "main": [
+        [
+          {
+            "node": "AI: brand vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI input: item vectors": {
+      "main": [
+        [
+          {
+            "node": "AI: item vectors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Sources?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sources?": {
+      "main": [
+        [
+          {
+            "node": "AI input: brand vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: brand vector": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Source list": {
+      "main": [
+        [
+          {
+            "node": "Source loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Source loop": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Read feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read feed": {
+      "main": [
+        [
+          {
+            "node": "Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Items": {
+      "main": [
+        [
+          {
+            "node": "New items?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New items?": {
+      "main": [
+        [
+          {
+            "node": "AI input: item vectors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: item vectors": {
+      "main": [
+        [
+          {
+            "node": "Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score": {
+      "main": [
+        [
+          {
+            "node": "Save items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save items": {
+      "main": [
+        [
+          {
+            "node": "Source loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

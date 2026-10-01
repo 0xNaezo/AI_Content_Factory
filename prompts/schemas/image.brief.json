@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "brief",
+    "negative"
+  ],
+  "properties": {
+    "brief": {
+      "type": "string",
+      "description": "Image generation prompt"
+    },
+    "negative": {
+      "type": "string",
+      "description": "What must not appear"
+    }
+  }
+}

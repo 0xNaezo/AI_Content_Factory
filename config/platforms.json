@@ -1,0 +1,64 @@
+{
+  "_comment": "Platform formats (tz section 6). Synced into table platform_formats by scripts/sync-config.sh. Brand profiles override notes/max_chars/image_aspect per platform.",
+  "telegram": {
+    "kind": "post",
+    "mvp_mode": "real",
+    "label": "Telegram",
+    "max_chars": 1024,
+    "max_chars_without_image": 4096,
+    "markup": "plain",
+    "image": { "aspects": ["16:9", "1:1"], "default": "16:9" },
+    "notes": "Channel post with one image; the text is the photo caption, so it must fit 1024 characters. Plain text only: no markdown, no HTML tags. Short paragraphs separated by blank lines; emoji allowed if the brand uses them."
+  },
+  "blog": {
+    "kind": "article",
+    "mvp_mode": "real",
+    "label": "Blog",
+    "min_words": 600,
+    "max_words": 1500,
+    "image": { "aspects": ["16:9"], "default": "16:9" },
+    "notes": "Article: title, lead paragraph, 3-6 sections with subheadings, SEO description up to 160 characters, URL slug (lowercase latin, hyphens)."
+  },
+  "email": {
+    "kind": "email_block",
+    "mvp_mode": "real",
+    "label": "Email digest",
+    "min_words": 60,
+    "max_words": 120,
+    "image": { "aspects": ["16:9"], "default": "16:9" },
+    "notes": "One block of the brand newsletter: title, 60-120 words, link label."
+  },
+  "linkedin": {
+    "kind": "post",
+    "mvp_mode": "preview",
+    "label": "LinkedIn",
+    "max_chars": 3000,
+    "image": { "aspects": ["1:1", "4:5"], "default": "1:1" },
+    "notes": "Hook in the first two lines (before 'see more'), then value, then CTA. Line breaks between short paragraphs."
+  },
+  "instagram": {
+    "kind": "post",
+    "mvp_mode": "preview",
+    "label": "Instagram",
+    "max_chars": 2200,
+    "image": { "aspects": ["4:5"], "default": "4:5" },
+    "notes": "Caption for one image. First line must stop the scroll. Hashtags at the end."
+  },
+  "facebook": {
+    "kind": "post",
+    "mvp_mode": "preview",
+    "label": "Facebook",
+    "max_chars": 500,
+    "image": { "aspects": ["1:1", "16:9"], "default": "1:1" },
+    "notes": "Short post (system rule: up to 500 characters)."
+  },
+  "x": {
+    "kind": "thread",
+    "mvp_mode": "preview",
+    "label": "X",
+    "max_chars_per_post": 280,
+    "max_posts": 5,
+    "image": { "aspects": ["16:9"], "default": "16:9" },
+    "notes": "Single post or a thread of up to 5 posts, each at most 280 characters. Links count as 23 characters."
+  }
+}

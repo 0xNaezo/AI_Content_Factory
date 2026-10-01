@@ -1,0 +1,435 @@
+{
+  "id": "acfEmailFetch001",
+  "name": "IN · Email fetch",
+  "nodes": [
+    {
+      "id": "0d6e688b-62dc-5912-8dc1-cf0e9b3510ab",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## IN · Email fetch\n**Purpose**: fetch a received email and its attachments from Resend, store files in S3, then intake_email(): sender by personal address in+<token>@…, limits (IN-2), material + parts, acknowledgement by email (IN-4); questions go to Telegram.\n**Input**: job {payload.event_id, payload.email_id}.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "967563ee-5854-563e-863d-2edac26b9dec",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "27063f08-a5a6-52be-b7a4-af849e74fca7",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select email_fetch_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.payload.event_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "17659cf4-97f5-5e81-903c-b3fce5657112",
+      "name": "Done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "41acf1c1-2db0-5bb5-b07c-508fcd22826d",
+              "leftValue": "={{ !!($json.c.done) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "55f8d4ca-fe7f-5d40-b889-dcf2e9e284d7",
+      "name": "Get email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.c.resend_base }}/emails/receiving/{{ $json.c.email_id }}",
+        "options": {
+          "timeout": 20000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "acfCredResend001",
+          "name": "Resend API (Authorization: Bearer re_...)"
+        }
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "39f65ecc-21fb-5c5f-90fc-9568008b59fb",
+      "name": "Attachments?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e7b31a5e-b54e-5777-9143-27ba667fbe11",
+              "leftValue": "={{ !!(($json.attachments || []).length > 0) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "31ab0bd0-dbe8-5db5-b76e-a8938d359801",
+      "name": "List attachments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.c.resend_base }}/emails/receiving/{{ $('Context').first().json.c.email_id }}/attachments",
+        "options": {
+          "timeout": 20000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "acfCredResend001",
+          "name": "Resend API (Authorization: Bearer re_...)"
+        }
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "35937c57-1305-591a-9947-0384917441bb",
+      "name": "Split attachments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c;\nreturn ($input.first().json.data || []).slice(0, 20).map((a) => ({ json: { ...a,\n  s3_key: `m/email/${c.event_id}/${a.id}-${String(a.filename || 'file').replace(/[^A-Za-z0-9._-]/g, '_')}` } }));\n"
+      }
+    },
+    {
+      "id": "b6a46e6c-a2b6-56ed-b534-03f54f72a7c0",
+      "name": "Download attachment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.download_url }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "b98ceaa2-3854-53ec-bd95-6186d5697f19",
+      "name": "Hash",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n  out.push({ json: { sha256: crypto.createHash('sha256').update(buf).digest('hex') }, binary: items[i].binary, pairedItem: i });\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "76d0dde8-0ae5-5fe2-ad63-b65b43e43ef3",
+      "name": "Store attachment",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "upload",
+        "bucketName": "={{ $('Context').first().json.c.bucket }}",
+        "fileName": "={{ $('Split attachments').item.json.s3_key }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "53e666df-b65e-58ac-a34a-ca3515b6bd79",
+      "name": "Assemble",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const mail = $('Get email').first().json;\nconst text = mail.text || String(mail.html || '').replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<br\\s*\\/?>|<\\/p>/gi, '\\n')\n  .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[ \\t]+/g, ' ').replace(/\\n\\s*\\n+/g, '\\n\\n').trim();\nlet attachments = [];\nif ($('Split attachments').isExecuted) {\n  const hashes = $('Hash').all();\n  attachments = $('Split attachments').all().map((it, i) => ({ id: it.json.id, filename: it.json.filename, content_type: it.json.content_type,\n    size: it.json.size, s3_key: it.json.s3_key, sha256: hashes[i]?.json.sha256 ?? null }));\n}\nreturn [{ json: { mail: { ...mail, text, attachments } } }];\n"
+      }
+    },
+    {
+      "id": "02d0aecc-9a96-5082-a508-687e08059b6f",
+      "name": "Intake",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2640,
+        170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select intake_email($1, $2::jsonb) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Context').first().json.c.event_id, $json.mail ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Done?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Get email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get email": {
+      "main": [
+        [
+          {
+            "node": "Attachments?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attachments?": {
+      "main": [
+        [
+          {
+            "node": "List attachments",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Assemble",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List attachments": {
+      "main": [
+        [
+          {
+            "node": "Split attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split attachments": {
+      "main": [
+        [
+          {
+            "node": "Download attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download attachment": {
+      "main": [
+        [
+          {
+            "node": "Hash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hash": {
+      "main": [
+        [
+          {
+            "node": "Store attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store attachment": {
+      "main": [
+        [
+          {
+            "node": "Assemble",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble": {
+      "main": [
+        [
+          {
+            "node": "Intake",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

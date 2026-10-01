@@ -1,0 +1,419 @@
+{
+  "id": "acfProfileIO0001",
+  "name": "ADM · Profile YAML",
+  "nodes": [
+    {
+      "id": "89de7add-15d4-5c43-99b4-4c53ce6596a7",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## ADM · Profile YAML\n**Purpose**: brand config as a YAML file through the bot (decision: YAML round trip). Export: brand fields + profile + platforms + feeds as a commented YAML document. Import: parse, validate the profile against schemas/brand-profile.schema.json and the operational part in SQL, save as a draft version; activation is a separate manager action (BP-2).\n**Input**: job profile.export {brand_id, payload.user_id} / profile.import {brand_id, payload.user_id, payload.tg_file_id}.",
+        "height": 160,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "4b7d9245-a9ca-5390-aa94-6eb79767d66d",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "538763e8-f221-5d3c-a017-9ad8250a7a2c",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select profile_export_context($1, $2) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.brand_id, $json.payload.user_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "b9e7c7c7-9781-5ae5-ab93-f28b42610fd4",
+      "name": "Operation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $('Job').first().json.type === 'profile.export' ? 0 : 1 }}"
+      }
+    },
+    {
+      "id": "c9b33d50-b4be-5c8c-9538-796f77d76a43",
+      "name": "Dump YAML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.c.extractor_base }}/yaml/dump",
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ data: $json.c.config, comment: $json.c.header }) }}"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "68bef652-7ebd-5f6c-9981-a0d76592723c",
+      "name": "Send file",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        960,
+        -170
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select tg_document($1, $2, $3, $4) as outbox_id",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Job').first().json.payload.user_id, $('Context').first().json.c.file_name, $json.text, $('Context').first().json.c.caption ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "87736a30-e526-5fad-97fb-ca2d91256d55",
+      "name": "Get file info",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.c.telegram_base }}/getFile",
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ file_id: $('Job').first().json.payload.tg_file_id }) }}"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "24b4e7f4-d231-55f3-9284-b48137726292",
+      "name": "Download",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Context').first().json.c.telegram_file_base }}/{{ $json.result.file_path }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "c5b1631c-6a4b-5f82-8fc3-524d8bbc0315",
+      "name": "Parse",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Context').first().json.c.extractor_base }}/yaml/parse",
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: String($json.data ?? \"\") }) }}"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "0575499c-87fb-5b05-8b75-59af47faa04c",
+      "name": "Parsed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5d86b1cd-86e6-577e-8575-510cfe1c06a5",
+              "leftValue": "={{ !!($json.ok) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "c8e29278-72d1-58d4-a3c5-1710903dcc10",
+      "name": "Validate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Context').first().json.c.extractor_base }}/validate/brand-profile",
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ data: $json.data?.profile ?? {} }) }}"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "feac7b9b-f0dc-50b1-b3aa-93dabae39a87",
+      "name": "Import",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select profile_import($1, $2, $3::jsonb, $4::jsonb) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [2, 3].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.brand_id, $('Job').first().json.payload.user_id, $('Parse').first().json.data, $json.errors ?? [] ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "15f019b2-6ae7-574b-8194-34ccc1ec57aa",
+      "name": "Syntax error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1680,
+        340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select profile_import($1, $2, null, $3::jsonb) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [2].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Job').first().json.brand_id, $('Job').first().json.payload.user_id, [ 'YAML syntax error' + ($json.line ? ' at line ' + $json.line : '') + ': ' + $json.error ] ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Operation": {
+      "main": [
+        [
+          {
+            "node": "Dump YAML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get file info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dump YAML": {
+      "main": [
+        [
+          {
+            "node": "Send file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get file info": {
+      "main": [
+        [
+          {
+            "node": "Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download": {
+      "main": [
+        [
+          {
+            "node": "Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse": {
+      "main": [
+        [
+          {
+            "node": "Parsed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsed?": {
+      "main": [
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Syntax error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate": {
+      "main": [
+        [
+          {
+            "node": "Import",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

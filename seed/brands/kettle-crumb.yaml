@@ -1,0 +1,298 @@
+# Demo brand: neighbourhood coffee shop (warm, playful, emoji sparing, informal). Fictional business.
+# Links use the reserved .example domain: replace with real URLs before the brand goes live.
+brand:
+  slug: kettle-crumb
+  name: "Kettle & Crumb"
+  timezone: Europe/London
+  blog_domain: null
+  monthly_budget_usd: 50
+
+profile:
+  basics:
+    name: "Kettle & Crumb"
+    description: >-
+      Kettle & Crumb is a neighbourhood coffee shop and bakery counter on Alder Lane in Manchester: espresso
+      drinks and filter coffee from a small-batch Yorkshire roaster, pastries and bread baked in our own kitchen
+      every morning, a big window table for laptops and a water bowl for every dog.
+    niche: Independent neighbourhood coffee shop with an in-house bakery
+    audience: >-
+      Neighbours, commuters, remote workers and families around Alder Lane in Manchester who want a good flat
+      white, a fresh bake and a friendly face; dog owners; home-brewing hobbyists.
+    languages: [en]
+    timezone: Europe/London
+    website: "https://kettleandcrumb.example"
+    topics:
+      - specialty coffee and espresso drinks
+      - seasonal drinks and menu changes
+      - pastries, buns and bread baked in-house
+      - home brewing tips
+      - coffee beans to take home
+      - latte art
+      - neighbourhood events and community
+      - dog-friendly café life
+      - opening hours and café news
+      - behind the scenes of a small café
+    facts:
+      - "Address: 27 Alder Lane, Manchester (corner of Alder Lane and Mill Street)."
+      - "Opening hours: Monday to Friday 7:30–18:00, Saturday and Sunday 8:30–17:00."
+      - "House espresso blend 'Morning Kettle', roasted for us every week by a small-batch roaster in Yorkshire."
+      - "All pastries and bread are baked in our own kitchen every morning."
+      - "Signature bake: cardamom buns, £3.10."
+      - "Prices: espresso £2.40, filter coffee £2.90, flat white £3.30, cappuccino £3.40."
+      - "Oat and soy milk at no extra charge."
+      - "At least two vegan bakes on the counter every day."
+      - "Decaf is available for every espresso drink."
+      - "Bring your own cup: 20p off any hot drink."
+      - "Morning Kettle beans to take home: 250 g bags, £8.50."
+      - "Latte Art Social: first Thursday of every month, 18:30–20:00, £12 including two drinks."
+      - "Dogs are welcome inside; water bowls by the door."
+      - "28 seats inside and a small pavement terrace from April to October."
+      - "Card and contactless payments only (no cash)."
+      - "Opened in May 2021."
+      - "Owner and head baker: Maya. Head barista: Tom."
+      - "Allergen information is available at the counter."
+  voice:
+    tone: warm, friendly, playful
+    style: >-
+      Short, conversational sentences in British English, like a chat across the counter. Concrete and sensory
+      (smells, textures, the weather outside). At most one gentle pun per post. Day and time first for anything
+      that is happening. No corporate language, no shouting, no chains of exclamation marks.
+    address: informal
+    emoji: sparing
+    allowed_words: [cuppa, brew, bake, neighbours, counter, cosy, regulars, fresh out of the oven]
+    forbidden_words: [cheap, guaranteed, world-class, best coffee in town, addicted, addiction, diet, hipster, artisanal, premium]
+    allowed_topics:
+      - seasonal menu
+      - neighbourhood events
+      - baking behind the scenes
+      - coffee brewing tips
+      - local suppliers
+      - dogs of the café
+    forbidden_topics:
+      - politics
+      - religion
+      - competitor cafés
+      - alcohol
+      - health or medical claims about coffee or food
+  required_elements:
+    cta:
+      phrases: [Pop in and say hi, See you at the counter, Come by for a cuppa]
+      platforms: [telegram, instagram, facebook]
+    links:
+      - label: "Menu & opening hours"
+        url: "https://kettleandcrumb.example/menu"
+        utm:
+          source: "{platform}"
+          medium: social
+          campaign: "kc_{date}"
+        platforms: [telegram, facebook]
+    hashtags:
+      required: ["#KettleAndCrumb"]
+      pool: ["#ManchesterCoffee", "#FlatWhite", "#CardamomBuns", "#IndependentCafe", "#BakedToday", "#LatteArt", "#DogFriendlyCafe", "#CoffeeTime", "#SourdoughLove", "#AutumnMenu"]
+      max: 5
+      platforms: [telegram, instagram, x]
+    disclaimers: []
+    signature:
+      text: "Kettle & Crumb · 27 Alder Lane"
+      platforms: [telegram]
+  visual:
+    palette: ["#6B4F3A", "#F4EBDD", "#C8553D", "#2F4538", "#E0B872"]
+    image_style: >-
+      Warm natural-light food photography: close-up still life of coffee drinks, pastries and handmade ceramics
+      on a worn oak counter or a marble café table; soft morning window light, shallow depth of field, cosy
+      neighbourhood-café mood, gentle film-like warmth.
+    logo: null
+    forbidden:
+      - "people, hands or faces"
+      - "text, chalkboards, menus or price tags"
+      - logos or branded cups
+      - alcoholic drinks
+      - disposable plastic cups
+  examples:
+    good:
+      - platform: telegram
+        text: |-
+          Cardamom buns, fresh out of the oven ☕
+
+          Maya had the dough proving before the sun was up, and Alder Lane smells like a Swedish bakery again. They're £3.10 and ridiculously good with a flat white.
+
+          Pop in and say hi — we're open till 18:00.
+
+          Kettle & Crumb · 27 Alder Lane
+          #KettleAndCrumb #CardamomBuns
+      - platform: instagram
+        text: |-
+          Rainy Tuesday? We've got you.
+
+          The window table is free, the radiators are on and there's a tray of banana bread on the counter. Dogs welcome, puddles optional.
+
+          See you at the counter 🧡
+
+          #KettleAndCrumb #ManchesterCoffee #DogFriendlyCafe
+      - platform: any
+        text: >-
+          New on the counter this week: plum and almond galettes. It's a small batch, so once they're gone,
+          they're gone until Saturday. Tom says they're "dangerously good with a filter coffee" and we're not
+          going to argue.
+      - platform: any
+        text: >-
+          Quick one for the regulars: bring your own cup and we'll take 20p off any hot drink. Your cup, our
+          coffee, a little less waste. Everybody wins.
+      - platform: facebook
+        text: >-
+          Latte Art Social is on Thursday, 18:30–20:00. £12 gets you two drinks and a go on the steam wand with
+          Tom. Complete beginners very welcome — nobody's first heart looks like a heart. Come by for a cuppa and
+          grab a spot at the counter.
+      - platform: x
+        text: "Fresh cardamom buns just landed on the counter. £3.10, still warm, usually gone by lunch. #KettleAndCrumb"
+      - platform: linkedin
+        text: |-
+          We bake everything for Kettle & Crumb in a kitchen about the size of a large cupboard.
+
+          When we opened on Alder Lane in 2021, people told us to buy pastries in. It would have been easier. But the smell of cardamom buns at 7:30 is half the reason our regulars come back, so Maya starts the ovens every morning before anyone else is awake.
+
+          Small café lesson: the thing that's hardest to scale is often the thing people love you for.
+      - platform: email
+        text: |-
+          The big window table is back
+
+          After a week of sanding and oiling, our favourite table is back where it belongs, by the window. It seats eight, there are two plug sockets underneath, and it's first come, first served from opening time. Laptop folk: weekday mornings are yours. Families and friends: it's all yours after 15:00 and all weekend. Bring a book, a friend or a very patient dog.
+      - platform: blog
+        text: |-
+          How we make cardamom buns (and how you can too)
+
+          Every morning, before the first espresso is pulled, Maya is already folding butter into dough. Cardamom buns are the most-requested bake at Kettle & Crumb, and the question we hear most at the counter is "what's the secret?". There isn't one secret — there are three: freshly ground cardamom, a slow overnight prove and a generous sugar crust. Here's how each one works, and how to get close at home without a bakery oven.
+      - platform: telegram
+        text: |-
+          Heads up, neighbours 🌧
+
+          The terrace is closed for the season, but all 28 seats inside are warm and waiting. Same hours, same buns, fewer wasps.
+
+          See you at the counter.
+
+          Kettle & Crumb · 27 Alder Lane
+          #KettleAndCrumb
+    bad:
+      - text: "🔥🔥 BEST COFFEE IN TOWN!!! 🔥🔥 Cheap prices and guaranteed good vibes. Visit us NOW!!!"
+        why: "Shouting and emoji spam, forbidden words (best coffee in town, cheap, guaranteed), and not a single concrete detail."
+      - text: "Kettle & Crumb is committed to delivering a premium beverage experience by leveraging ethically sourced inputs across our value chain."
+        why: "Corporate jargon and the forbidden word 'premium' — it sounds like a bank, not a neighbourhood café."
+      - text: "Start your day with our coffee — it boosts your metabolism and helps you burn fat!"
+        why: "A health claim (forbidden topic) that is not in our facts; we never promise health effects."
+  platforms:
+    telegram:
+      notes: "2–4 short paragraphs. The signature line goes right before the hashtags."
+      max_chars: null
+      image_aspect: null
+    blog:
+      notes: "Friendly how-to or story tone; close with an invitation to visit, mentioning the address."
+      max_chars: null
+      image_aspect: null
+    email:
+      notes: null
+      max_chars: null
+      image_aspect: null
+    linkedin:
+      notes: "Small-business, behind-the-scenes angle (baking, suppliers, running a café); no hashtags."
+      max_chars: null
+      image_aspect: null
+    instagram:
+      notes: null
+      max_chars: null
+      image_aspect: null
+    facebook:
+      notes: "Neighbourly and practical: lead with what, when and where."
+      max_chars: 450
+      image_aspect: null
+    x:
+      notes: "One or two posts; at most 2 hashtags."
+      max_chars: null
+      image_aspect: null
+  digest:
+    title: The Crumb Letter
+    intro_style: "A warm, chatty hello from behind the counter in two or three short sentences: how the week felt and what's new, no hard sell."
+    footer_text: "Kettle & Crumb · 27 Alder Lane, Manchester · Mon–Fri 7:30–18:00, Sat–Sun 8:30–17:00. You're receiving this because you subscribed on our blog."
+    cta:
+      text: "See this week's menu"
+      url: "https://kettleandcrumb.example/menu"
+
+platforms:
+  - platform: telegram
+    language: en
+    mode: real
+    active: true
+    auto_publish: false
+    target: {chat_id: "@kettle_crumb_demo"}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5, 6, 7], times: ["08:00", "15:00"]}
+      max_per_day: 2
+      min_interval_minutes: 240
+  - platform: blog
+    language: en
+    mode: real
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [3], times: ["10:00"]}
+        - {days: [6], times: ["09:30"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: email
+    language: en
+    mode: real
+    active: true
+    auto_publish: false
+    target: {from_name: "Kettle & Crumb"}
+    schedule: {frequency: weekly, day: 5, time: "08:00", auto_send: false}
+  - platform: linkedin
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [2], times: ["09:00"]}
+      max_per_day: 1
+      min_interval_minutes: 1440
+  - platform: instagram
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5, 6, 7], times: ["12:00"]}
+      max_per_day: 1
+      min_interval_minutes: 720
+  - platform: facebook
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 3, 5, 6], times: ["11:00"]}
+      max_per_day: 1
+      min_interval_minutes: 720
+  - platform: x
+    language: en
+    mode: preview
+    active: true
+    auto_publish: false
+    target: {}
+    schedule:
+      slots:
+        - {days: [1, 2, 3, 4, 5], times: ["08:30", "16:00"]}
+        - {days: [6, 7], times: ["10:00"]}
+      max_per_day: 2
+      min_interval_minutes: 240
+
+feeds:
+  - https://perfectdailygrind.com/feed/
+  - https://www.baristamagazine.com/feed/

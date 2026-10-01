@@ -1,0 +1,67 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "claims",
+    "language",
+    "forbidden_topics",
+    "summary"
+  ],
+  "properties": {
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim",
+          "status",
+          "evidence",
+          "note"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "unsupported",
+              "contradicted"
+            ]
+          },
+          "evidence": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Quote from the source/brand facts"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "description": "Every factual claim in the variant (facts, numbers, dates, prices, names, promises)"
+    },
+    "language": {
+      "type": "string",
+      "description": "ISO 639-1 code of the variant text"
+    },
+    "forbidden_topics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Forbidden brand topics the variant touches (empty if none)"
+    },
+    "summary": {
+      "type": "string",
+      "description": "One sentence verdict"
+    }
+  }
+}

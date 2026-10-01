@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "has_people",
+    "has_text",
+    "has_third_party_logos",
+    "has_artifacts",
+    "ok",
+    "notes"
+  ],
+  "properties": {
+    "has_people": {
+      "type": "boolean"
+    },
+    "has_text": {
+      "type": "boolean"
+    },
+    "has_third_party_logos": {
+      "type": "boolean"
+    },
+    "has_artifacts": {
+      "type": "boolean"
+    },
+    "ok": {
+      "type": "boolean",
+      "description": "true only if none of the problems are present"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

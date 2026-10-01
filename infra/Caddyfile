@@ -1,0 +1,25 @@
+# Public reverse proxy (prod, docker-compose.prod.yml).
+{
+	email {$ACME_EMAIL}
+	# Certificates for blog hosts are issued on first request, only for hosts the web service knows (panel host,
+	# brand blog domains and subdomains).
+	on_demand_tls {
+		ask http://web:3000/api/tls-check
+	}
+}
+
+# n8n: only the webhooks Telegram and Resend call. /webhook/cmd (web service commands) and the editor stay internal.
+{$N8N_DOMAIN} {
+	@hooks path /webhook/tg /webhook/resend
+	handle @hooks {
+		reverse_proxy n8n:5678
+	}
+	respond 404
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	reverse_proxy web:3000
+}

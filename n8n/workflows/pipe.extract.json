@@ -1,0 +1,1055 @@
+{
+  "id": "acfPartProcess01",
+  "name": "PIPE · Extract",
+  "nodes": [
+    {
+      "id": "3ec47169-6a1c-5124-b081-6086aaa6090e",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -40
+      ],
+      "parameters": {
+        "content": "## PIPE · Extract\n**Purpose**: turn one material part into text (EX-1): web page (extractor, SSRF-safe), voice/audio (speech-to-text), image (vision description), PDF (Claude reads text and scans; page limit IN-2), DOCX (extractor), table (split into row materials, IN-9).\n**Input**: job {payload.part_id}.\n**Side effects**: file to S3 + asset, part text or error (an error rejects the material with the reason, IN-7), summarization starts when the last part is ready.\n**TZ**: EX-1, IN-2, IN-7, IN-9.",
+        "height": 170,
+        "width": 380,
+        "color": 7
+      }
+    },
+    {
+      "id": "6e5b4705-d739-588f-a4ac-ecde814e4f30",
+      "name": "Job",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "9da3f258-aa6e-5a74-9e64-5a4b5b6a2e57",
+      "name": "Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select part_context($1) as c",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $json.payload.part_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "ca89bacf-16ef-56f9-8bfa-067ad81b24ce",
+      "name": "Already done?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9d8fb03-0a51-5895-81bf-928567e7610b",
+              "leftValue": "={{ !!($json.c.done) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "540e75d8-012c-5108-8700-6b12c389823d",
+      "name": "Source",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        720,
+        170
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ $json.c.kind === 'url' ? 0 : ($json.c.asset_key ? 1 : 2) }}"
+      }
+    },
+    {
+      "id": "06d88f8c-8e96-58cf-9111-3f7a0ffbee81",
+      "name": "Read page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.c.extractor_base }}/url",
+        "options": {
+          "timeout": 45000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ url: $json.c.url }) }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "fd66a57f-b29a-5055-8bbe-8deac3aaa7c1",
+      "name": "Page text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -170
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c;\nif ($json.error || !$json.statusCode || $json.statusCode >= 500) throw new Error('provider_unavailable: extractor is not reachable');\nconst b = $json.body || {};\nreturn { json: b.ok\n  ? { text: (b.title ? b.title + '\\n\\n' : '') + b.text, meta: { title: b.title, url: b.url, chars: b.meta?.chars ?? null }, error: null }\n  : { text: null, meta: {}, error: `Could not read the link ${c.url}: ${b.error || 'HTTP ' + $json.statusCode}` } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "f616d4c2-82c9-5e06-901c-4703ae17e3ad",
+      "name": "Get stored file",
+      "type": "n8n-nodes-base.s3",
+      "typeVersion": 1,
+      "position": [
+        960,
+        170
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "bucketName": "={{ $json.c.bucket }}",
+        "fileKey": "={{ $json.c.asset_key }}",
+        "binaryPropertyName": "data"
+      },
+      "credentials": {
+        "s3": {
+          "id": "acfCredS30000001",
+          "name": "ACF S3 (RustFS)"
+        }
+      }
+    },
+    {
+      "id": "d948402f-2b4d-5455-8eb5-b13a65f64c55",
+      "name": "Telegram input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const c = $json.c; return { json: { tg_file_id: c.tg_file_id, s3_key: c.s3_key, bucket: c.bucket, mime: c.mime, telegram_base: c.telegram_base, telegram_file_base: c.telegram_file_base } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "c2067b59-33f4-56eb-9500-3e5d70b01c38",
+      "name": "Download to S3",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        340
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfTgFile0000001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "60846b2f-fb7f-573b-a6a8-9af06050ebff",
+      "name": "Mark downloaded",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1440,
+        340
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select part_downloaded($1, $2, $3, $4, $5) as asset_id",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ [ $('Context').first().json.c.part_id, $json.s3_key, $json.sha256, $json.mime, $json.bytes ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    },
+    {
+      "id": "cfbd75a0-a205-5bf0-b70c-c348c959e006",
+      "name": "Keep file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        340
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: $('Download to S3').first().json, binary: $('Download to S3').first().binary }];\n"
+      }
+    },
+    {
+      "id": "5573e595-1e89-56ca-ab7b-52d4d7331328",
+      "name": "Kind",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1920,
+        170
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 6,
+        "output": "={{ ({ voice: 0, audio: 0, image: 1, pdf: 2, docx: 3, table: 4 })[$('Context').first().json.c.kind] ?? 5 }}"
+      }
+    },
+    {
+      "id": "4f95d01e-dd61-50c0-b589-e21a1a7b104e",
+      "name": "AI input: transcribe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        -170
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c; return { json: { route: 'stt', attachments: [{ kind: 'audio', s3_key: c.asset_key || c.s3_key, mime: c.mime }], account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: c.material_id ?? null, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "603aaa55-5087-5f2e-b1e7-563913f980ce",
+      "name": "AI: transcribe",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2400,
+        -170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "9f6a8d6f-f828-5d5b-9da2-af9945c8a797",
+      "name": "Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -170
+      ],
+      "parameters": {
+        "jsCode": "const t = String($json.result || '').trim(); return { json: t ? { text: t, meta: { chars: t.length }, error: null } : { text: null, meta: {}, error: 'No speech could be recognized in the audio.' } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "68a117a8-3803-5cb0-8027-e048ae520d63",
+      "name": "AI input: describe image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c; return { json: { route: 'vision.describe', attachments: [{ kind: 'image', s3_key: c.asset_key || c.s3_key, mime: c.mime || 'image/jpeg' }], vars: {}, account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: c.material_id ?? null, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "29039a7e-81bf-55e5-b858-713ab84d2320",
+      "name": "AI: describe image",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2400,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "0fb62b8e-da53-54e4-b332-5678fd9ce567",
+      "name": "Image text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const r = $json.result || {}; const t = [r.description, r.visible_text ? 'Text in the image: ' + r.visible_text : null].filter(Boolean).join('\\n'); return { json: { text: t, meta: { suitable_as_visual: r.suitable_as_visual ?? null }, error: t ? null : 'The image could not be described.' } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "7421bc0b-00aa-5b22-81ba-75f08705fc14",
+      "name": "Count pages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        170
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Context').first().json.c.extractor_base }}/pdf/info",
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "fb1e53f2-d768-5823-9855-26fae552e003",
+      "name": "Pages OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        170
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5162985b-6d5a-5684-8dfb-75cf5f899d03",
+              "leftValue": "={{ !!($json.pages <= $('Context').first().json.c.max_pages) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "8f4d0e44-2f86-5a2c-b877-bfc0ffc95282",
+      "name": "Too many pages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        340
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c; return { json: { text: null, meta: { pages: $json.pages }, error: `The PDF has ${$json.pages} pages; the limit is ${c.max_pages}.` } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "34e444cd-0c4c-5465-b9a2-661c6ddd20f2",
+      "name": "AI input: read PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json.c; return { json: { route: 'vision.pdf', attachments: [{ kind: 'pdf', s3_key: c.asset_key || c.s3_key, mime: 'application/pdf' }], vars: { file_name: c.file_name }, account_type: c.account_type, brand_id: c.brand_id ?? null, material_id: c.material_id ?? null, package_id: c.package_id ?? null, variant_id: c.variant_id ?? null, job_id: $('Job').first().json.id } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "8e807831-6f10-502a-8c59-6713eb2a81fd",
+      "name": "AI: read PDF",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2880,
+        170
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "acfAiGateway0001",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "b3062cbf-33f9-5fbf-b6eb-bf625da917d5",
+      "name": "PDF text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        170
+      ],
+      "parameters": {
+        "jsCode": "const t = String($json.result || '').trim(); return { json: t ? { text: t, meta: { pages: $('Count pages').first().json.pages }, error: null } : { text: null, meta: {}, error: 'The PDF has no readable text.' } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "6944a848-401c-5f9f-bea0-c051067c4014",
+      "name": "Read DOCX",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        510
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Context').first().json.c.extractor_base }}/docx",
+        "options": {
+          "timeout": 60000
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data"
+      },
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "da5acc2b-5ab7-53e1-8b7d-f798548b3360",
+      "name": "DOCX text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        510
+      ],
+      "parameters": {
+        "jsCode": "const t = String($json.text || '').trim(); return { json: t ? { text: t, meta: $json.meta || {}, error: null } : { text: null, meta: {}, error: 'The document has no text.' } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "5cf30a42-69bb-5f67-bc79-33b0f35301cd",
+      "name": "Table type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2160,
+        680
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ /csv/i.test(($('Context').first().json.c.mime || '') + ($('Context').first().json.c.file_name || '').slice(-4)) ? 0 : 1 }}"
+      }
+    },
+    {
+      "id": "d1d6057a-a00c-5ed8-8c04-a1b06c9783a4",
+      "name": "Read CSV",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        680
+      ],
+      "parameters": {
+        "operation": "csv",
+        "binaryPropertyName": "data",
+        "options": {
+          "headerRow": true
+        }
+      }
+    },
+    {
+      "id": "f14c59a7-b42d-5733-9ad7-c08336e0f4a7",
+      "name": "Read XLSX",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        850
+      ],
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "data",
+        "options": {
+          "headerRow": true,
+          "rawData": true
+        }
+      }
+    },
+    {
+      "id": "52f3653f-b76b-54af-9c65-876d120a9136",
+      "name": "Split table",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2640,
+        680
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select table_split($1, $2::jsonb) as r",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [1].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Context').first().json.c.part_id, $input.all().map((i) => i.json) ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "d7ee384b-5915-5b11-998f-1236a7d629f0",
+      "name": "Unknown kind",
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        1020
+      ],
+      "parameters": {
+        "errorType": "errorMessage",
+        "errorMessage": "=fatal: unsupported part kind {{ $('Context').first().json.c.kind }}"
+      }
+    },
+    {
+      "id": "2d0c4346-4c57-5f07-8bca-bd6f310f8aa6",
+      "name": "Save text",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3360,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select part_extracted($1, $2, $3::jsonb, $4) as flags",
+        "options": {
+          "largeNumbersOutput": "numbers",
+          "queryReplacement": "={{ ((a) => a.map((v, i) => [2].includes(i) && v !== null && typeof v === 'object' ? JSON.stringify(v) : v))([ $('Context').first().json.c.part_id, $json.text ?? null, $json.meta ?? {}, $json.error ?? null ]) }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "acfCredPostgres1",
+          "name": "ACF Postgres (app_n8n)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "AI input: transcribe": {
+      "main": [
+        [
+          {
+            "node": "AI: transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI input: describe image": {
+      "main": [
+        [
+          {
+            "node": "AI: describe image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI input: read PDF": {
+      "main": [
+        [
+          {
+            "node": "AI: read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Already done?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already done?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Source": {
+      "main": [
+        [
+          {
+            "node": "Read page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get stored file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read page": {
+      "main": [
+        [
+          {
+            "node": "Page text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Page text": {
+      "main": [
+        [
+          {
+            "node": "Save text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram input": {
+      "main": [
+        [
+          {
+            "node": "Download to S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download to S3": {
+      "main": [
+        [
+          {
+            "node": "Mark downloaded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark downloaded": {
+      "main": [
+        [
+          {
+            "node": "Keep file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep file": {
+      "main": [
+        [
+          {
+            "node": "Kind",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get stored file": {
+      "main": [
+        [
+          {
+            "node": "Kind",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kind": {
+      "main": [
+        [
+          {
+            "node": "AI input: transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI input: describe image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Count pages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read DOCX",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Table type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown kind",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: transcribe": {
+      "main": [
+        [
+          {
+            "node": "Transcript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcript": {
+      "main": [
+        [
+          {
+            "node": "Save text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: describe image": {
+      "main": [
+        [
+          {
+            "node": "Image text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image text": {
+      "main": [
+        [
+          {
+            "node": "Save text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Count pages": {
+      "main": [
+        [
+          {
+            "node": "Pages OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pages OK?": {
+      "main": [
+        [
+          {
+            "node": "AI input: read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Too many pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: read PDF": {
+      "main": [
+        [
+          {
+            "node": "PDF text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF text": {
+      "main": [
+        [
+          {
+            "node": "Save text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Too many pages": {
+      "main": [
+        [
+          {
+            "node": "Save text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read DOCX": {
+      "main": [
+        [
+          {
+            "node": "DOCX text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DOCX text": {
+      "main": [
+        [
+          {
+            "node": "Save text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Table type": {
+      "main": [
+        [
+          {
+            "node": "Read CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read CSV": {
+      "main": [
+        [
+          {
+            "node": "Split table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read XLSX": {
+      "main": [
+        [
+          {
+            "node": "Split table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveExecutionProgress": false,
+    "errorWorkflow": "acfErrorHandler1"
+  },
+  "active": false,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

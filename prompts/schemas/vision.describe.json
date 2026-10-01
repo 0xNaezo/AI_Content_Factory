@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "description",
+    "visible_text",
+    "suitable_as_visual"
+  ],
+  "properties": {
+    "description": {
+      "type": "string",
+      "description": "What the image shows, factual, 2-5 sentences"
+    },
+    "visible_text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Text visible in the image, transcribed"
+    },
+    "suitable_as_visual": {
+      "type": "boolean",
+      "description": "Could this image illustrate a post (quality, no people issues)"
+    }
+  }
+}

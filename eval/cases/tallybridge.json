@@ -1,0 +1,72 @@
+[
+  {
+    "id": "tb-gen-01",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "Release note for everyone: partial payment matching is live on all plans. When a customer pays only part of an invoice, Tallybridge now matches the amount, marks the invoice as partially paid and adjusts the reminder sequence so the next reminder only asks for the remaining balance. Available in the web app today; API support follows in the next release."},
+    "expected": {"facts": ["partial", "remaining balance", "all plans"], "forbidden_claims": ["machine learning", "100%", "instantly"]}
+  },
+  {
+    "id": "tb-gen-02",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "Case study, approved by the customer: Lindqvist Freight (logistics, 140 employees, Gothenburg). Before Tallybridge, their two-person AR team sent reminders manually from spreadsheets and DSO was 52 days. Nine months after rollout, DSO is 38 days and the team spends about 6 hours a week on collections instead of 20. Quote from their finance manager, Ingrid Berg: \"We stopped chasing and started forecasting.\" They use the Growth plan and the customer portal."},
+    "expected": {"facts": ["Lindqvist Freight", "38 days", "52"], "forbidden_claims": ["27%", "saved €", "3x"]}
+  },
+  {
+    "id": "tb-gen-03",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "We're running a 45-minute webinar on Thursday at 15:00 CET: \"Getting ready for EU e-invoicing\". Speakers: our head of product Daniel Okafor and independent tax consultant Marie Lenaerts from Brussels. It covers what changes for B2B invoicing, a practical preparation checklist and live Q&A. Registration: https://tallybridge.example/webinars/e-invoicing. It won't be recorded, so join live."},
+    "expected": {"facts": ["15:00", "Daniel Okafor", "Marie Lenaerts"], "forbidden_claims": ["certificate", "CPE", "on demand"]}
+  },
+  {
+    "id": "tb-gen-04",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "Blog topic: five signs your AR process doesn't scale. From our customer success team's notes: (1) reminders depend on one person remembering; (2) bank payments are reconciled in spreadsheets at month-end; (3) nobody can say what cash comes in next week; (4) disputes live in email threads; (5) customers ask for invoice copies because they can't find them. For each sign, suggest what to change. Mention the customer portal and automated reminder sequences as the way Tallybridge helps, without overselling."},
+    "expected": {"facts": ["spreadsheet", "customer portal", "month-end"], "forbidden_claims": ["guarantee", "50%", "hours per week"]}
+  },
+  {
+    "id": "tb-gen-05",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "Heads-up for customers and prospects: from next month the Growth plan includes up to 1,500 invoices per month (was 1,000) at the same price, €249 per month. Starter stays as it is. Existing Growth customers get the new limit automatically; nothing to do."},
+    "expected": {"facts": ["1,500", "€249", "Growth"], "forbidden_claims": ["discount", "€199", "2,000"]}
+  },
+  {
+    "id": "tb-gen-06",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "We're hiring a Senior Backend Engineer (Go, PostgreSQL) for the payment-matching team. Hybrid: two days a week in our Amsterdam office. Salary range €75,000–€90,000 plus stock options. Apply at tallybridge.example/careers."},
+    "expected": {"facts": ["PostgreSQL", "€75,000", "Amsterdam"], "forbidden_claims": ["remote-first", "fully remote", "unlimited vacation"]}
+  },
+  {
+    "id": "tb-gen-07",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "so quick one, um, lots of prospects keep asking if we do SEPA direct debit, and yes we do, through the customer portal, plus card and bank transfer, and er I think we should post about it because people think we only send invoices but we also help collect, yeah, and maybe mention that payments made in the portal get matched automatically, so no manual reconciliation"},
+    "expected": {"facts": ["SEPA", "customer portal", "card"], "forbidden_claims": ["Apple Pay", "PayPal", "instant payout"]}
+  },
+  {
+    "id": "tb-gen-08",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "Our SOC 2 Type II report for 2026 is done: clean opinion, no exceptions. Customers and prospects can request it through their account manager or at security@tallybridge.example. Reminder: all customer data is hosted in the EU, in Frankfurt."},
+    "expected": {"facts": ["SOC 2", "Frankfurt", "no exceptions"], "forbidden_claims": ["ISO 27001", "HIPAA", "unhackable"]}
+  },
+  {
+    "id": "tb-gen-09",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "Tip: send the first reminder 3 days after the due date, not 30."},
+    "expected": {"facts": ["3 days", "30"], "forbidden_claims": ["twice as fast", "studies", "research"]}
+  },
+  {
+    "id": "tb-gen-10",
+    "brand": "tallybridge",
+    "kind": "generation",
+    "material": {"text": "We'll be at the Finance Ops Summit in Rotterdam on Wednesday and Thursday next week, booth 14. Come by for a live demo of the new cash forecast view, or book a 20-minute slot with our team in advance. Our CFO Sanne de Wit speaks on Thursday at 11:30 on \"Forecasting cash without a data team\"."},
+    "expected": {"facts": ["booth 14", "Rotterdam", "11:30"], "forbidden_claims": ["keynote", "free tickets", "giveaway"]}
+  }
+]
