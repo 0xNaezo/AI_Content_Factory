@@ -45,48 +45,7 @@ Authors send raw material: a voice note, a few lines of text, photos, a PDF, a s
 
 ### System overview
 
-```mermaid
-flowchart LR
-  AU["Authors"]
-  ED["Editors and managers"]
-  RD["Readers"]
-
-  subgraph ext["External services"]
-    direction TB
-    TG["Telegram Bot API"]
-    RS["Resend email"]
-  end
-
-  subgraph stack["Docker Compose stack"]
-    EG["Egress proxy<br/>adds the bot token"]
-    N8N["n8n<br/>30 workflows"]
-    WEB["Web service<br/>blogs, previews, panel"]
-    XT["Extractor<br/>URL, DOCX, PDF, YAML, images"]
-    PG[("PostgreSQL + pgvector<br/>state, job queue, outbox,<br/>business logic, audit")]
-    S3[("RustFS<br/>object storage")]
-  end
-
-  subgraph ai["AI providers"]
-    direction TB
-    CL["Anthropic Claude<br/>text, vision, PDF"]
-    OR["OpenRouter<br/>speech, images, embeddings"]
-  end
-
-  AU -- "messages, files" --> TG
-  AU -- "email" --> RS
-  ED <-- "cards, actions" --> TG
-  RD --> WEB
-  TG -- "webhook" --> N8N
-  TG <-->|"Bot API"| EG
-  EG <-->|"send, edit, files"| N8N
-  RS <-- "webhook, API" --> N8N
-  WEB -- "commands" --> N8N
-  WEB -- "read-only views" --> PG
-  N8N <--> PG
-  N8N <--> S3
-  N8N --> XT
-  N8N -- "AI gateway" --> ai
-```
+![System overview: authors and editors use Telegram and email; n8n runs the workflows on PostgreSQL, RustFS, the extractor and AI providers; readers use the web service](docs/diagrams/readme-0.png)
 
 The design rests on three rules:
 
@@ -96,65 +55,13 @@ The design rests on three rules:
 
 ### Content pipeline
 
-```mermaid
-flowchart TD
-  IN["Material arrives<br/>Telegram message or email"] --> GL["Glue window, limits,<br/>duplicate check"]
-  GL --> EX["Extract text<br/>speech-to-text, vision, PDF,<br/>DOCX, web page, table rows"]
-  EX --> SM["Summarize<br/>language, key points,<br/>facts with source quotes"]
-  SM --> OK{"Enough to write?"}
-  OK -- "no" --> AQ["Ask the author<br/>one clarifying question"]
-  AQ -- "answer" --> SM
-  AQ -. "no answer in 2 h:<br/>shorter, general copy" .-> RT
-  OK -- "yes" --> RT{"Which brand?"}
-  RT -- "hint or single brand" --> PK
-  RT -- "classifier, confident" --> PK
-  RT -- "low confidence" --> T3["Author picks<br/>from the top 3"]
-  T3 --> PK
-  PK["Package<br/>one variant per platform"] --> GN["Generate variant<br/>brand voice, platform format"]
-  PK --> VS["Visual<br/>author photo or generated image,<br/>3 aspect ratios, logo, vision check"]
-  GN --> CK{"Checks"}
-  CK -- "fail" --> FX["Auto-fix<br/>up to 2 attempts"]
-  FX --> CK
-  CK -- "pass" --> CD["Package card<br/>to all editors"]
-  VS --> CD
-  CD --> AC{"Editor"}
-  AC -- "redo with comment" --> GN
-  AC -- "reject" --> RJ["Rejected<br/>feedback for the brand"]
-  AC -- "approve" --> SL["Next free slot<br/>per-platform schedule"]
-  SL --> PB["Publish exactly once<br/>Telegram channel, blog, previews"]
-  SL --> DG["Weekly email digest"]
-```
+![Content pipeline: intake, routing and generation, review and publishing](docs/diagrams/readme-1.png)
 
 ### Execution model
 
 Every unit of work is a row in `jobs`. Each job type maps to a handler workflow. Concurrency per type, leases, retries with backoff and dead jobs are all handled in one place.
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant TG as Telegram
-  participant WH as IN · Telegram webhook
-  participant DB as Postgres
-  participant DS as CORE · Dispatcher
-  participant RN as CORE · Job runner
-  participant HD as Handler workflow
-  participant NT as CORE · Notify
-
-  TG->>WH: update with secret header
-  WH->>DB: record inbound event (unique update_id)
-  WH-->>TG: 200 OK
-  Note over DB: job queued
-  DS->>DB: claim_jobs(): lease and per-type concurrency
-  DS->>RN: start a runner per job
-  RN->>HD: run the handler for the job type
-  HD->>DB: decisions in one SQL function
-  HD-->>RN: result or error
-  RN->>DB: job_done() or job_failed()
-  Note over RN,DB: retry with backoff, budget block or dead job
-  NT->>DB: claim outbox rows
-  NT->>TG: send or edit through the egress proxy
-  NT->>DB: record the result
-```
+![Execution model: webhook records the event, the dispatcher claims jobs, handlers decide in SQL, Notify sends from the outbox](docs/diagrams/readme-2.png)
 
 If n8n dies mid-step, the lease expires and the job runs again from the last committed state. The end-to-end suite verifies this by restarting n8n during an in-flight AI call.
 
@@ -162,41 +69,11 @@ If n8n dies mid-step, the lease expires and the job runs again from the last com
 
 Every status change goes through one SQL function (`transition`) that validates it against an allowed graph and writes the audit log.
 
-```mermaid
-stateDiagram-v2
-  direction LR
-  [*] --> received
-  received --> parsed: text extracted
-  received --> rejected: limits or refusal
-  parsed --> routed: brand found
-  parsed --> awaiting_author: question, duplicate or brand choice
-  parsed --> rejected: moderation or unusable
-  awaiting_author --> routed: answered, or timed out (shorter copy)
-  awaiting_author --> rejected: author declined
-  routed --> [*]
-  rejected --> [*]
-```
+![Material lifecycle state machine](docs/diagrams/readme-3.png)
 
 _Material lifecycle._
 
-```mermaid
-stateDiagram-v2
-  [*] --> draft
-  draft --> pending_approval: generated and checked
-  pending_approval --> revising: redo with comment
-  revising --> pending_approval
-  pending_approval --> approved: editor, or auto-publish
-  pending_approval --> rejected
-  approved --> scheduled: slot booked
-  scheduled --> rescheduled: slot missed or moved
-  rescheduled --> scheduled
-  scheduled --> publishing: due
-  publishing --> published
-  publishing --> failed: retry window over
-  failed --> scheduled: manual retry or next slot
-  published --> [*]
-  rejected --> [*]
-```
+![Variant lifecycle state machine](docs/diagrams/readme-4.png)
 
 _Variant lifecycle. Any state before `publishing` can also become `cancelled` (removal, redirect to another brand). Digest issues follow the same graph plus `skipped`, used when there are too few blocks or no approval by send time._
 
@@ -537,13 +414,7 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/web:/app" -w /app node:22-alpine
 
 Production runs on a single VPS with Docker Compose and the production overlay.
 
-```mermaid
-flowchart LR
-  NET(["Internet"]) --> CD["Caddy :443<br/>automatic and on-demand TLS"]
-  CD -- "panel, blogs, brand domains" --> WEB["Web service"]
-  CD -- "/webhook/tg and /webhook/resend only" --> N8N["n8n"]
-  OPS["Operator"] -. "SSH tunnel to 127.0.0.1:5679" .-> N8N
-```
+![Production ingress: Caddy on 443 proxies to the web service and the n8n webhooks; the operator uses an SSH tunnel](docs/diagrams/readme-5.png)
 
 1. Use a separate production bot. Set `PUBLIC_N8N_URL`, `PUBLIC_WEB_URL`, `N8N_DOMAIN` (the host of `PUBLIC_N8N_URL`) and `ACME_EMAIL`. Set an explicit `N8N_ENCRYPTION_KEY` and store a copy outside the database backups.
 2. Start the stack:
